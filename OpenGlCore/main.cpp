@@ -5,18 +5,19 @@
 
 //defining vertexShader
 
-const char* VertexShadersrc = "#version 330 core\n"
-"layout (location =0) in vec3 a_Pos;\n"
+// Vertex Shader source code
+const char* vertexShaderSource = "#version 330 core\n"
+"layout (location = 0) in vec3 aPos;\n"
 "void main()\n"
 "{\n"
-"   gl_Position=vec4(aPos.x,aPos.y,aPos.z,1.0);\n"
+"   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
 "}\0";
-
-const char* FragShadersrc = "#version 330 core\n"
+//Fragment Shader source code
+const char* fragmentShaderSource = "#version 330 core\n"
 "out vec4 FragColor;\n"
 "void main()\n"
 "{\n"
-"   FragColor=vec4(0.8f,0.3f,0.02f,1.0f);\n"
+"   FragColor = vec4(0.8f, 0.3f, 0.02f, 1.0f);\n"
 "}\n\0";
 
 int main() {
@@ -28,14 +29,23 @@ int main() {
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	GLfloat verts[] = {
-		 -0.5f,-0.5f * float(sqrt(3)) / 3,0.0f,
-		 0.5f,-0.5f * float(sqrt(3)) / 3,0.0f,
-		 0.0f,0.5f * float(sqrt(3)) * 2 / 3,0.0f
+		-0.5f, -0.5f * float(sqrt(3)) / 3, 0.0f, // Lower left corner
+		0.5f, -0.5f * float(sqrt(3)) / 3, 0.0f, // Lower right corner
+		0.0f, 0.5f * float(sqrt(3)) * 2 / 3, 0.0f, // Upper corner
+		-0.5f / 2, 0.5f * float(sqrt(3)) / 6, 0.0f, // Inner left
+		0.5f / 2, 0.5f * float(sqrt(3)) / 6, 0.0f, // Inner right
+		0.0f, -0.5f * float(sqrt(3)) / 3, 0.0f // Inner down
+	};
+
+	GLuint Triangles[] = {
+		0, 3, 5, // Lower left triangle
+		3, 2, 4, // Upper triangle
+		5, 4, 1 // Lower right triangle
 	};
 
 
 	//creating Window
-	GLFWwindow* window = glfwCreateWindow(640, 360, "OpenGLCORE", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(800, 800, "OpenGLCORE", nullptr, nullptr);
 
 	if (window == nullptr) {
 		std::wcout << "failed to create Window" << std::endl;
@@ -50,17 +60,17 @@ int main() {
 	gladLoadGL();
 
 	//setting the viewport cordinates
-	glViewport(0, 0, 640, 360);
+	glViewport(0, 0, 800, 800);
 
 	//Assigning predifned vertex shader to opengl
 	GLuint vettexShader = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(vettexShader, 1, &VertexShadersrc, nullptr);
+	glShaderSource(vettexShader, 1, &vertexShaderSource, nullptr);
 	glCompileShader(vettexShader);
 
 
 	//Assigning predifned FragMent shader to opengl
 	GLuint FragShader = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(FragShader, 1, &FragShadersrc, nullptr);
+	glShaderSource(FragShader, 1, &fragmentShaderSource, nullptr);
 	glCompileShader(FragShader);
 
 
@@ -78,7 +88,7 @@ int main() {
 	glDeleteShader(FragShader);
 
 
-	GLuint VAO, Vbo;
+	GLuint VAO, Vbo, Tbo;
 
 	//Generating VertexArray
 	glGenVertexArrays(1, &VAO);
@@ -88,9 +98,15 @@ int main() {
 
 	//generating vertex buffer
 	glGenBuffers(1, &Vbo);
+	//generating triangle buffer
+	glGenBuffers(1, &Tbo);
 
 	//binding the buffer
 	glBindBuffer(GL_ARRAY_BUFFER, Vbo);
+
+	//binding traingle buffer
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Tbo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(Triangles), Triangles, GL_STATIC_DRAW);
 
 	//Assingning VertexData To Buffer
 	glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
@@ -100,6 +116,7 @@ int main() {
 	//Binding The Buffer
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 
 
@@ -119,7 +136,7 @@ int main() {
 		glClear(GL_COLOR_BUFFER_BIT);
 		glUseProgram(ShaderProgram);
 		glBindVertexArray(VAO);
-		glDrawArrays(GL_TRIANGLES, 0, 3);
+		glDrawElements(GL_TRIANGLES, 9, GL_UNSIGNED_INT, 0);
 		glfwSwapBuffers(window);
 
 
@@ -129,6 +146,7 @@ int main() {
 	glDeleteVertexArrays(1, &VAO);
 	glDeleteBuffers(1, &Vbo);
 	glDeleteProgram(ShaderProgram);
+	glDeleteBuffers(1, &Tbo);
 	//destroying window
 	glfwDestroyWindow(window);
 
