@@ -151,8 +151,22 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Triangles.cpp" />
     <ClCompile Include="glad.c" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="shaderClass.cpp" />
+    <ClCompile Include="VerTexArray.cpp" />
+    <ClCompile Include="VerTexBuffer.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shader\default.frag" />
+    <None Include="Shader\default.vert" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Triangles.h" />
+    <ClInclude Include="shaderClass.h" />
+    <ClInclude Include="VerTexArray.h" />
+    <ClInclude Include="VerTexBuffer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

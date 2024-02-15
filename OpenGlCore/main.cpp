@@ -3,9 +3,9 @@
 #include<GLFW/glfw3.h>
 
 #include"shaderClass.h"
-#include"VAO.h"
-#include"VBO.h"
-#include"EBO.h"
+#include"VerTexArray.h"
+#include"VerTexBuffer.h"
+#include"Triangles.h"
 
 
 
@@ -64,18 +64,18 @@ int main()
 
 
 	// Generates Shader object using shaders defualt.vert and default.frag
-	Shader shaderProgram("default.vert", "default.frag");
+	Shader shaderProgram("./Shader/default.vert", "./SHader/default.frag");
 
 
 
 	// Generates Vertex Array Object and binds it
-	VAO VAO1;
+	VerTexArray VAO1;
 	VAO1.Bind();
 
 	// Generates Vertex Buffer Object and links it to vertices
-	VBO VBO1(vertices, sizeof(vertices));
+	VerTexBuffer VBO1(vertices, sizeof(vertices));
 	// Generates Element Buffer Object and links it to indices
-	EBO EBO1(indices, sizeof(indices));
+	Triangle EBO1(indices, sizeof(indices));
 
 	// Links VBO to VAO
 	VAO1.LinkVBO(VBO1, 0);
