@@ -8,7 +8,7 @@
 #include"Triangles.h"
 
 
-
+const int height = 360, Width = 640;
 // Vertices coordinates
 GLfloat vertices[] =
 {
@@ -18,6 +18,13 @@ GLfloat vertices[] =
 	-0.5f / 2, 0.5f * float(sqrt(3)) / 6, 0.0f, // Inner left
 	0.5f / 2, 0.5f * float(sqrt(3)) / 6, 0.0f, // Inner right
 	0.0f, -0.5f * float(sqrt(3)) / 3, 0.0f // Inner down
+
+
+/////for XY Plane Rectangle
+//-0.5f,-0.5f,0.00f,
+//0.5f,-0.5f,0.00f,
+//-0.5f,1.0f,0.00f,
+//0.5f,1.0f,0.00
 };
 
 // Indices for vertices order
@@ -26,6 +33,11 @@ GLuint indices[] =
 	0, 3, 5, // Lower left triangle
 	3, 2, 4, // Lower right triangle
 	5, 4, 1 // Upper triangle
+
+	// XY plane Indices Order
+	//0,1,2,
+	//2,3,1
+
 };
 
 
@@ -44,7 +56,7 @@ int main()
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	// Create a GLFWwindow object of 800 by 800 pixels, naming it "YoutubeOpenGL"
-	GLFWwindow* window = glfwCreateWindow(800, 800, "YoutubeOpenGL", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(Width, height, "OpenGlCore", NULL, NULL);
 	// Error check if the window fails to create
 	if (window == NULL)
 	{
@@ -59,7 +71,7 @@ int main()
 	gladLoadGL();
 	// Specify the viewport of OpenGL in the Window
 	// In this case the viewport goes from x = 0, y = 0, to x = 800, y = 800
-	glViewport(0, 0, 800, 800);
+	glViewport(0, 0, Width, height);
 
 
 
