@@ -151,6 +151,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="stb.cpp" />
     <ClCompile Include="Triangles.cpp" />
     <ClCompile Include="glad.c" />
     <ClCompile Include="Main.cpp" />
@@ -167,6 +168,9 @@
     <ClInclude Include="shaderClass.h" />
     <ClInclude Include="VerTexArray.h" />
     <ClInclude Include="VerTexBuffer.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="Images\World.jpg" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
