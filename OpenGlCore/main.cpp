@@ -6,7 +6,7 @@
 #include"VerTexArray.h"
 #include"VerTexBuffer.h"
 #include"Triangles.h"
-#include "stb/stb.h"
+#include "Texture.h";
 
 
 
@@ -104,38 +104,17 @@ int main()
 	VBO1.Unbind();
 	EBO1.Unbind();
 
+	std::string TexPath("./Images/World.png");
+
+	Texture texture(TexPath.c_str(), GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_UNSIGNED_BYTE);
+	texture.texUnit(shaderProgram, "tex0", 0);
+
+
 
 	//getting the id of the uniform variable from active shader
 
 	GLuint UniformID = glGetUniformLocation(shaderProgram.ID, "scale");
 
-	//Textures
-
-	int height, width, numColch;
-	unsigned char* bytes = stbi_load("./Images/World.png", &width, &height, &numColch, 0);
-
-	//creating textureobj
-	GLuint texture;
-	glGenTextures(1, &texture);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texture);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, bytes);
-
-	glGenerateMipmap(GL_TEXTURE_2D);
-	stbi_image_free(bytes);
-	glBindTexture(GL_TEXTURE_2D, 0);
-
-
-	//shaderProgram.Activate();
-	GLuint UniformTex0 = glGetUniformLocation(shaderProgram.ID, "tex0");
-	shaderProgram.Activate();
-	glUniform1i(UniformTex0, 0);
 
 
 	// Main while loop
@@ -148,11 +127,11 @@ int main()
 		// Tell OpenGL which Shader Program we want to use
 		shaderProgram.Activate();
 		glUniform1f(UniformID, 1.5f);
-		glBindTexture(GL_TEXTURE_2D, texture);
 		// Bind the VAO so OpenGL knows to use it
 		VAO1.Bind();
+		texture.Bind();
 		// Draw primitives, number of indices, datatype of indices, index of indices
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+		glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(int), GL_UNSIGNED_INT, 0);
 		// Swap the back buffer with the front buffer
 		glfwSwapBuffers(window);
 		// Take care of all GLFW events
@@ -165,7 +144,6 @@ int main()
 	VAO1.Delete();
 	VBO1.Delete();
 	EBO1.Delete();
-	glDeleteTextures(1, &texture);
 	shaderProgram.Delete();
 
 	// Delete window before ending the program
