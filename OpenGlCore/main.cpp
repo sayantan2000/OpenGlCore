@@ -1,12 +1,13 @@
 #include<iostream>
 #include<glad/glad.h>
 #include<GLFW/glfw3.h>
-
 #include"shaderClass.h"
 #include"VerTexArray.h"
 #include"VerTexBuffer.h"
 #include"Triangles.h"
 #include "Texture.h";
+#include "Camera.h";
+
 
 
 
@@ -24,11 +25,12 @@ GLfloat vertices[] =
 
 
 	//square
-	//     COORDINATES     /        COLORS      /   TexCoord  //
-	-0.5f, -0.5f, 0.0f,     1.0f, 0.0f, 0.0f,	0.0f, 0.0f, // Lower left corner
-	-0.5f,  0.5f, 0.0f,     0.0f, 1.0f, 0.0f,	0.0f, 1.0f, // Upper left corner
-	 0.5f,  0.5f, 0.0f,     0.0f, 0.0f, 1.0f,	1.0f, 1.0f, // Upper right corner
-	 0.5f, -0.5f, 0.0f,     1.0f, 1.0f, 1.0f,	1.0f, 0.0f  // Lower right corner
+	 // COORDINATES / COLORS / TexCoord  //
+	-0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,	0.0f, 0.0f,
+	-0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	5.0f, 0.0f,
+	 0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	0.0f, 0.0f,
+	 0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,	5.0f, 0.0f,
+	 0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,	2.5f, 5.0f
 };
 
 // Indices for vertices order
@@ -40,15 +42,27 @@ GLuint indices[] =
 	//5, 4, 1 // Upper triangle
 
 	//square indices
-	0,2,1,
-	0,3,2
+	0, 1, 2,
+	0, 2, 3,
+	0, 1, 4,
+	1, 2, 4,
+	2, 3, 4,
+	3, 0, 4
 
 };
 
-
+float oldTimeSinceStart = 0;
 
 int main()
 {
+	float currentFrame = glfwGetTime();
+	float lastFrame = currentFrame;
+	float deltaTime = 0.00f;
+
+	float a = 0;
+	float speed = 0.6;
+
+	a += deltaTime * speed;
 	stbi_set_flip_vertically_on_load(true);
 	// Initialize GLFW
 	glfwInit();
@@ -104,29 +118,40 @@ int main()
 	VBO1.Unbind();
 	EBO1.Unbind();
 
-	std::string TexPath("./Images/World.png");
+	std::string TexPath("./Images/Brick.jpg");
 
-	Texture texture(TexPath.c_str(), GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_UNSIGNED_BYTE);
+	Texture texture(TexPath.c_str(), GL_TEXTURE_2D, GL_TEXTURE0, GL_RGB, GL_UNSIGNED_BYTE);
 	texture.texUnit(shaderProgram, "tex0", 0);
 
 
 
 	//getting the id of the uniform variable from active shader
-
+	shaderProgram.Activate();
 	GLuint UniformID = glGetUniformLocation(shaderProgram.ID, "scale");
 
+	Camera camera(800, 800, glm::vec3(0.0f, .5f, 2.0f));
 
-
+	float rotation = 0.0f;
+	double prevTime = glfwGetTime();
+	glEnable(GL_DEPTH_TEST);
 	// Main while loop
 	while (!glfwWindowShouldClose(window))
 	{
+		currentFrame = glfwGetTime();
+		deltaTime = currentFrame - lastFrame;
+		lastFrame = currentFrame;
+
+		a += deltaTime * speed;
+
 		// Specify the color of the background
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
 		// Clean the back buffer and assign the new color to it
-		glClear(GL_COLOR_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		// Tell OpenGL which Shader Program we want to use
 		shaderProgram.Activate();
-		glUniform1f(UniformID, 1.5f);
+		camera.Matrix(45.0f, 0.1f, 100.00f, shaderProgram, "camMatrix");
+		camera.Inputs(window, deltaTime);
+		glUniform1f(UniformID, 1.00f);
 		// Bind the VAO so OpenGL knows to use it
 		VAO1.Bind();
 		texture.Bind();
