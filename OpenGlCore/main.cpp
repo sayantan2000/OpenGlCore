@@ -1,3 +1,5 @@
+#include<Windows.h>
+#include <WinUser.h>
 #include<iostream>
 #include<glad/glad.h>
 #include<GLFW/glfw3.h>
@@ -7,6 +9,8 @@
 #include"Triangles.h"
 #include "Texture.h";
 #include "Camera.h";
+#include "algorithm";
+
 
 
 
@@ -52,10 +56,12 @@ GLuint indices[] =
 };
 
 float oldTimeSinceStart = 0;
-const int HEIGHT = 1080, WIDTH = 1920;
+int HEIGHT = 1080, WIDTH = 1920;
 
 int main()
 {
+	HEIGHT = GetSystemMetrics(SM_CYSCREEN);
+	WIDTH = GetSystemMetrics(SM_CXSCREEN);
 	float currentFrame = glfwGetTime();
 	float lastFrame = currentFrame;
 	float deltaTime = 0.00f;
@@ -77,7 +83,7 @@ int main()
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	// Create a GLFWwindow object of 800 by 800 pixels, naming it "YoutubeOpenGL"
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "YoutubeOpenGL", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "YoutubeOpenGL", glfwGetPrimaryMonitor(), nullptr);
 	// Error check if the window fails to create
 	if (window == NULL)
 	{
@@ -136,23 +142,25 @@ int main()
 	float rotation = 0.0f;
 	double prevTime = glfwGetTime();
 	glEnable(GL_DEPTH_TEST);
+	glm::mat4 model = glm::mat4(1.00f);
 	// Main while loop
 	while (!glfwWindowShouldClose(window))
 	{
+		std::wcout << "DeltaTime :-" << deltaTime << "\n" << "\0";
 		double crntTime = glfwGetTime();
-		if (crntTime - prevTime >= 1 / 60)
-		{
-			rotation += 0.5f;
-			prevTime = crntTime;
-		}
-		glm::mat4 model = glm::mat4(1.00f);
-		model = glm::rotate(model, glm::radians(rotation), glm::vec3(0.0f, 1.0f, 0.00f));
-
 		currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
-
 		a += deltaTime * speed;
+		if (crntTime - prevTime >= 1 / 60)
+		{
+			rotation += deltaTime;
+			rotation = std::clamp(rotation, 0.0f, 1.0f);
+			prevTime = crntTime;
+		}
+		//model = glm::mat4(1.00f);
+		model = glm::rotate(model, glm::radians(rotation), glm::vec3(0.0f, 1.0f, 0.00f));
+
 
 		// Specify the color of the background
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
