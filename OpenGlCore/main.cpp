@@ -36,6 +36,17 @@ GLfloat vertices[] =
 	 0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,	5.0f, 0.0f,
 	 0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,	2.5f, 5.0f
 };
+GLfloat lightVertices[] =
+{ //     COORDINATES     //
+	-0.1f, -0.1f,  0.1f,
+	-0.1f, -0.1f, -0.1f,
+	 0.1f, -0.1f, -0.1f,
+	 0.1f, -0.1f,  0.1f,
+	-0.1f,  0.1f,  0.1f,
+	-0.1f,  0.1f, -0.1f,
+	 0.1f,  0.1f, -0.1f,
+	 0.1f,  0.1f,  0.1f
+};
 
 // Indices for vertices order
 GLuint indices[] =
@@ -53,6 +64,22 @@ GLuint indices[] =
 	2, 3, 4,
 	3, 0, 4
 
+};
+
+GLuint lightIndices[] =
+{
+	0, 1, 2,
+	0, 2, 3,
+	0, 4, 7,
+	0, 7, 3,
+	3, 7, 6,
+	3, 6, 2,
+	2, 6, 5,
+	2, 5, 1,
+	1, 5, 4,
+	1, 4, 0,
+	4, 5, 6,
+	4, 6, 7
 };
 
 float oldTimeSinceStart = 0;
@@ -125,6 +152,25 @@ int main()
 	VBO1.Unbind();
 	EBO1.Unbind();
 
+	Shader lightShader("./Shader/Triangle.vert", "./Shader/Triangle.frag");
+	// Generates Vertex Array Object and binds it
+	VerTexArray lightVAO;
+	lightVAO.Bind();
+	// Generates Vertex Buffer Object and links it to vertices
+	VerTexBuffer lightVBO(lightVertices, sizeof(lightVertices));
+	// Generates Element Buffer Object and links it to indices
+	Triangle lightEBO(lightIndices, sizeof(lightIndices));
+	// Links VBO attributes such as coordinates and colors to VAO
+	lightVAO.LinkVBO(lightVBO, 0, 3, GL_FLOAT, 3 * sizeof(float), (void*)0);
+	// Unbind all to prevent accidentally modifying them
+	lightVAO.Unbind();
+	lightVBO.Unbind();
+	lightEBO.Unbind();
+
+	glm::vec3 lightPos = glm::vec3(0.5f, 0.5f, 0.5f);
+	glm::mat4 lightModel = glm::mat4(1.0f);
+	lightModel = glm::translate(lightModel, lightPos);
+
 	std::string TexPath("./Images/Brick.jpg");
 
 	Texture texture(TexPath.c_str(), GL_TEXTURE_2D, GL_TEXTURE0, GL_RGB, GL_UNSIGNED_BYTE);
@@ -137,12 +183,19 @@ int main()
 	GLuint UniformID = glGetUniformLocation(shaderProgram.ID, "scale");
 	GLuint UnformModel = glGetUniformLocation(shaderProgram.ID, "model");
 
+	lightShader.Activate();
+	glUniformMatrix4fv(glGetUniformLocation(lightShader.ID, "model"), 1, GL_FALSE, glm::value_ptr(lightModel));
+
+
+
+
 	Camera camera(WIDTH, HEIGHT, glm::vec3(0.0f, .5f, 2.0f));
 
 	float rotation = 0.0f;
 	double prevTime = glfwGetTime();
 	glEnable(GL_DEPTH_TEST);
 	glm::mat4 model = glm::mat4(1.00f);
+
 	// Main while loop
 	while (!glfwWindowShouldClose(window))
 	{
@@ -171,13 +224,22 @@ int main()
 		camera.updateMatrix(45.0f, 0.1f, 100.00f);
 		camera.Inputs(window, deltaTime);
 		glUniform1f(UniformID, 1.00f);
-		glUniformMatrix4fv(UnformModel, 1, GL_FALSE, glm::value_ptr(model));
+
 		// Bind the VAO so OpenGL knows to use it
 		VAO1.Bind();
 		texture.Bind();
+		glUniformMatrix4fv(UnformModel, 1, GL_FALSE, glm::value_ptr(model));
 		// Draw primitives, number of indices, datatype of indices, index of indices
 		glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(int), GL_UNSIGNED_INT, 0);
 		camera.Matrix(shaderProgram, "camMatrix");
+
+		lightShader.Activate();
+		// Export the camMatrix to the Vertex Shader of the light cube
+		camera.Matrix(lightShader, "camMatrix");
+		// Bind the VAO so OpenGL knows to use it
+		lightVAO.Bind();
+		// Draw primitives, number of indices, datatype of indices, index of indices
+		glDrawElements(GL_TRIANGLES, sizeof(lightIndices) / sizeof(int), GL_UNSIGNED_INT, 0);
 		// Swap the back buffer with the front buffer
 		glfwSwapBuffers(window);
 		// Take care of all GLFW events
