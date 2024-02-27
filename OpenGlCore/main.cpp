@@ -38,14 +38,17 @@ GLfloat vertices[] =
 };
 GLfloat lightVertices[] =
 { //     COORDINATES     //
-	-0.1f, -0.1f,  0.1f,
-	-0.1f, -0.1f, -0.1f,
-	 0.1f, -0.1f, -0.1f,
-	 0.1f, -0.1f,  0.1f,
-	-0.1f,  0.1f,  0.1f,
-	-0.1f,  0.1f, -0.1f,
-	 0.1f,  0.1f, -0.1f,
-	 0.1f,  0.1f,  0.1f
+
+
+	-0.5f, 0.0f,  0.5f,
+	-0.5f, 0.0f, -0.5f,
+	 0.5f, 0.0f, -0.5f,
+	 0.5f, 0.0f,  0.5f,
+	 0.0f, 0.8f,  0.0f,
+
+
+
+
 };
 
 // Indices for vertices order
@@ -70,16 +73,10 @@ GLuint lightIndices[] =
 {
 	0, 1, 2,
 	0, 2, 3,
-	0, 4, 7,
-	0, 7, 3,
-	3, 7, 6,
-	3, 6, 2,
-	2, 6, 5,
-	2, 5, 1,
-	1, 5, 4,
-	1, 4, 0,
-	4, 5, 6,
-	4, 6, 7
+	0, 1, 4,
+	1, 2, 4,
+	2, 3, 4,
+	3, 0, 4
 };
 
 float oldTimeSinceStart = 0;
@@ -167,7 +164,7 @@ int main()
 	lightVBO.Unbind();
 	lightEBO.Unbind();
 
-	glm::vec3 lightPos = glm::vec3(0.5f, 0.5f, 0.5f);
+	glm::vec3 lightPos = glm::vec3(2.5f, 0, -2.00f);
 	glm::mat4 lightModel = glm::mat4(1.0f);
 	lightModel = glm::translate(lightModel, lightPos);
 
