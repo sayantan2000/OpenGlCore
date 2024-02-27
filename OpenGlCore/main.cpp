@@ -213,6 +213,7 @@ int main()
 		}
 		//model = glm::mat4(1.00f);
 		model = glm::rotate(model, glm::radians(rotation), glm::vec3(0.0f, 1.0f, 0.00f));
+		lightModel = glm::rotate(lightModel, glm::radians(rotation), glm::vec3(0.0f, 1.0f, 0.00f));
 
 
 		// Specify the color of the background
@@ -238,6 +239,7 @@ int main()
 		camera.Matrix(lightShader, "camMatrix");
 		// Bind the VAO so OpenGL knows to use it
 		lightVAO.Bind();
+		glUniformMatrix4fv(glGetUniformLocation(lightShader.ID, "model"), 1, GL_FALSE, glm::value_ptr(lightModel));
 		// Draw primitives, number of indices, datatype of indices, index of indices
 		glDrawElements(GL_TRIANGLES, sizeof(lightIndices) / sizeof(int), GL_UNSIGNED_INT, 0);
 		// Swap the back buffer with the front buffer
