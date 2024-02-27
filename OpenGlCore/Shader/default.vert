@@ -7,11 +7,11 @@ out vec3 color;
 out vec2 texcord;
 uniform float scale;
 
-
+uniform mat4 model;
 uniform mat4 camMatrix;
 void main()
 {
-   gl_Position =camMatrix*vec4(aPos*scale,1);
+   gl_Position =camMatrix*model*vec4(aPos*scale,1);
    color=acolor;
    texcord=aTex;
 }
