@@ -94,3 +94,28 @@ void Shader::CompileError(unsigned int shader, const char* type)
 		}
 	}
 }
+
+void Shader::SetUniformValueF(const char* UniForm, float a_data)
+{
+	glUniform1f(GetUniFormId(UniForm), a_data);
+}
+
+void Shader::SeUniFormValueMattrix(const char* Uniform, glm::mat4& mat)
+{
+	glUniformMatrix4fv(GetUniFormId(Uniform), 1, GL_FALSE, glm::value_ptr(mat));
+}
+
+void Shader::SetUniformValueVec4(const char* Uniform, glm::vec4 vector)
+{
+	glUniform4f(GetUniFormId(Uniform), vector.x, vector.y, vector.z, vector.w);
+}
+
+void Shader::SetUniformValueVec3(const char* Uniform, glm::vec3 vector)
+{
+	glUniform3f(GetUniFormId(Uniform), vector.x, vector.y, vector.z);
+}
+
+GLuint Shader::GetUniFormId(const char* UniForm)
+{
+	return glGetUniformLocation(ID, UniForm);
+}
