@@ -157,10 +157,10 @@ int main()
 	Triangle EBO1(indices, sizeof(indices));
 
 	// Links VBO to VAO
-	VAO1.LinkVBO(VBO1, 0, 3, GL_FLOAT, 11 * sizeof(float), (void*)0);
-	VAO1.LinkVBO(VBO1, 1, 3, GL_FLOAT, 11 * sizeof(float), (void*)(3 * sizeof(float)));
-	VAO1.LinkVBO(VBO1, 2, 2, GL_FLOAT, 11 * sizeof(float), (void*)(6 * sizeof(float)));
-	VAO1.LinkVBO(VBO1, 3, 3, GL_FLOAT, 11 * sizeof(float), (void*)(8 * sizeof(float)));
+	VAO1.LinkAttriBute(VBO1, 0, 3, GL_FLOAT, 11 * sizeof(float), (void*)0);
+	VAO1.LinkAttriBute(VBO1, 1, 3, GL_FLOAT, 11 * sizeof(float), (void*)(3 * sizeof(float)));
+	VAO1.LinkAttriBute(VBO1, 2, 2, GL_FLOAT, 11 * sizeof(float), (void*)(6 * sizeof(float)));
+	VAO1.LinkAttriBute(VBO1, 3, 3, GL_FLOAT, 11 * sizeof(float), (void*)(8 * sizeof(float)));
 	// Unbind all to prevent accidentally modifying them
 	VAO1.Unbind();
 	VBO1.Unbind();
@@ -175,7 +175,7 @@ int main()
 	// Generates Element Buffer Object and links it to indices
 	Triangle lightEBO(lightIndices, sizeof(lightIndices));
 	// Links VBO attributes such as coordinates and colors to VAO
-	lightVAO.LinkVBO(lightVBO, 0, 3, GL_FLOAT, 3 * sizeof(float), (void*)0);
+	lightVAO.LinkAttriBute(lightVBO, 0, 3, GL_FLOAT, 3 * sizeof(float), (void*)0);
 	// Unbind all to prevent accidentally modifying them
 	lightVAO.Unbind();
 	lightVBO.Unbind();

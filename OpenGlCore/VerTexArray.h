@@ -13,7 +13,7 @@ public:
 	VerTexArray();
 
 	// Links a VBO to the VAO using a certain layout
-	void LinkVBO(VerTexBuffer VBO, GLuint layout, GLuint numComponents, GLenum typr, GLsizeiptr stride, void* offset);
+	void LinkAttriBute(VerTexBuffer VBO, GLuint layout, GLuint numComponents, GLenum typr, GLsizeiptr stride, void* offset);
 	// Binds the VAO
 	void Bind();
 	// Unbinds the VAO
