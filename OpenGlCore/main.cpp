@@ -10,10 +10,7 @@
 #include "Texture.h";
 #include "Camera.h";
 #include "algorithm";
-
-
-
-
+//#include"PrimitIve.h"
 
 // Vertices coordinates
 GLfloat vertices[] =
@@ -100,6 +97,8 @@ int HEIGHT = 1080, WIDTH = 1920;
 
 int main()
 {
+
+	//PrimitIve p = PrimitIve::GetPrimiTive(PrimitIve::Sphere);
 	HEIGHT = GetSystemMetrics(SM_CYSCREEN);
 	WIDTH = GetSystemMetrics(SM_CXSCREEN);
 	float currentFrame = glfwGetTime();
@@ -195,7 +194,7 @@ int main()
 	//getting the id of the uniform variable from active shader
 	shaderProgram.Activate();
 	shaderProgram.SetUniformValueVec3("lightPos", lightPos);
-	shaderProgram.SetUniformValueVec4("LightColor", glm::vec4(1.0f));
+	shaderProgram.SetUniformValueVec4("lightcolor", glm::vec4(1.0f));
 	lightShader.Activate();
 	lightShader.SeUniFormValueMattrix("model", lightModel);
 	lightShader.SetUniformValueVec4("LightColor", glm::vec4(1.00f));
@@ -227,6 +226,7 @@ int main()
 		}
 		//model = glm::mat4(1.00f);
 		model = glm::rotate(model, glm::radians(rotation), glm::vec3(0.0f, 1.0f, 0.00f));
+		shaderProgram.SetUniformValueVec3("CamPos", camera.Position);
 		//lightModel = glm::rotate(lightModel, glm::radians(rotation), glm::vec3(0.0f, 1.0f, 0.00f));
 
 
