@@ -10,45 +10,46 @@
 #include "Texture.h";
 #include "Camera.h";
 #include "algorithm";
+#include"Primitive.h";
 //#include"PrimitIve.h"
 
 // Vertices coordinates
-GLfloat vertices[] =
-{
-	//trinagles
-	//// cordinates										//colors                       
-	//-0.5f, -0.5f * float(sqrt(3)) / 3, 0.0f,			0.3f,0.2f,.5f,											 // Lower left corner
-	//0.5f, -0.5f * float(sqrt(3)) / 3, 0.0f,				0.3f,0.1f,.5f,											 // Lower right corner
-	//0.0f, 0.5f * float(sqrt(3)) * 2 / 3, 0.0f,			0.3f,0.7f,.4f,											 // Upper corner
-	//-0.5f / 2, 0.5f * float(sqrt(3)) / 6, 0.0f,			0.3f,0.5f,.2f,											 // Inner left
-	//0.5f / 2, 0.5f * float(sqrt(3)) / 6, 0.0f,			0.3f,0.2f,.5f,											 // Inner right
-	//0.0f, -0.5f * float(sqrt(3)) / 3, 0.0f															 // Inner down
-
-
-	//square
-	 // COORDINATES / COLORS / TexCoord  //
-	//     COORDINATES     /        COLORS          /    TexCoord   /        NORMALS       //
-	-0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f, 	 0.0f, 0.0f,      0.0f, -1.0f, 0.0f, // Bottom side
-	-0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	 0.0f, 5.0f,      0.0f, -1.0f, 0.0f, // Bottom side
-	 0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	 5.0f, 5.0f,      0.0f, -1.0f, 0.0f, // Bottom side
-	 0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,      0.0f, -1.0f, 0.0f, // Bottom side
-
-	-0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f, 	 0.0f, 0.0f,     -0.8f, 0.5f,  0.0f, // Left Side
-	-0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,     -0.8f, 0.5f,  0.0f, // Left Side
-	 0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,     -0.8f, 0.5f,  0.0f, // Left Side
-
-	-0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,      0.0f, 0.5f, -0.8f, // Non-facing side
-	 0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	 0.0f, 0.0f,      0.0f, 0.5f, -0.8f, // Non-facing side
-	 0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,      0.0f, 0.5f, -0.8f, // Non-facing side
-
-	 0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	 0.0f, 0.0f,      0.8f, 0.5f,  0.0f, // Right side
-	 0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,      0.8f, 0.5f,  0.0f, // Right side
-	 0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,      0.8f, 0.5f,  0.0f, // Right side
-
-	 0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,      0.0f, 0.5f,  0.8f, // Facing side
-	-0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f, 	 0.0f, 0.0f,      0.0f, 0.5f,  0.8f, // Facing side
-	 0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,      0.0f, 0.5f,  0.8f  // Facing side
-};
+//GLfloat vertices[] =
+//{
+//	//trinagles
+//	//// cordinates										//colors                       
+//	//-0.5f, -0.5f * float(sqrt(3)) / 3, 0.0f,			0.3f,0.2f,.5f,											 // Lower left corner
+//	//0.5f, -0.5f * float(sqrt(3)) / 3, 0.0f,				0.3f,0.1f,.5f,											 // Lower right corner
+//	//0.0f, 0.5f * float(sqrt(3)) * 2 / 3, 0.0f,			0.3f,0.7f,.4f,											 // Upper corner
+//	//-0.5f / 2, 0.5f * float(sqrt(3)) / 6, 0.0f,			0.3f,0.5f,.2f,											 // Inner left
+//	//0.5f / 2, 0.5f * float(sqrt(3)) / 6, 0.0f,			0.3f,0.2f,.5f,											 // Inner right
+//	//0.0f, -0.5f * float(sqrt(3)) / 3, 0.0f															 // Inner down
+//
+//
+//	//square
+//	 // COORDINATES / COLORS / TexCoord  //
+//	//     COORDINATES     /        COLORS          /    TexCoord   /        NORMALS       //
+//	-0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f, 	 0.0f, 0.0f,      0.0f, -1.0f, 0.0f, // Bottom side
+//	-0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	 0.0f, 5.0f,      0.0f, -1.0f, 0.0f, // Bottom side
+//	 0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	 5.0f, 5.0f,      0.0f, -1.0f, 0.0f, // Bottom side
+//	 0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,      0.0f, -1.0f, 0.0f, // Bottom side
+//
+//	-0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f, 	 0.0f, 0.0f,     -0.8f, 0.5f,  0.0f, // Left Side
+//	-0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,     -0.8f, 0.5f,  0.0f, // Left Side
+//	 0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,     -0.8f, 0.5f,  0.0f, // Left Side
+//
+//	-0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,      0.0f, 0.5f, -0.8f, // Non-facing side
+//	 0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	 0.0f, 0.0f,      0.0f, 0.5f, -0.8f, // Non-facing side
+//	 0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,      0.0f, 0.5f, -0.8f, // Non-facing side
+//
+//	 0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	 0.0f, 0.0f,      0.8f, 0.5f,  0.0f, // Right side
+//	 0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,      0.8f, 0.5f,  0.0f, // Right side
+//	 0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,      0.8f, 0.5f,  0.0f, // Right side
+//
+//	 0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,      0.0f, 0.5f,  0.8f, // Facing side
+//	-0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f, 	 0.0f, 0.0f,      0.0f, 0.5f,  0.8f, // Facing side
+//	 0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,      0.0f, 0.5f,  0.8f  // Facing side
+//};
 GLfloat lightVertices[] =
 { //     COORDINATES     //
 
@@ -64,23 +65,23 @@ GLfloat lightVertices[] =
 
 };
 
-// Indices for vertices order
-GLuint indices[] =
-{
-	//traingle indices
-	//0, 3, 5, // Lower left triangle
-	//3, 2, 4, // Lower right triangle
-	//5, 4, 1 // Upper triangle
-
-	//square indices
-	0, 1, 2, // Bottom side
-	0, 2, 3, // Bottom side
-	4, 6, 5, // Left side
-	7, 9, 8, // Non-facing side
-	10, 12, 11, // Right side
-	13, 15, 14 // Facing side
-
-};
+//// Indices for vertices order
+//GLuint indices[] =
+//{
+//	//traingle indices
+//	//0, 3, 5, // Lower left triangle
+//	//3, 2, 4, // Lower right triangle
+//	//5, 4, 1 // Upper triangle
+//
+//	//square indices
+//	0, 1, 2, // Bottom side
+//	0, 2, 3, // Bottom side
+//	4, 6, 5, // Left side
+//	7, 9, 8, // Non-facing side
+//	10, 12, 11, // Right side
+//	13, 15, 14 // Facing side
+//
+//};
 
 GLuint lightIndices[] =
 {
@@ -97,6 +98,7 @@ int HEIGHT = 1080, WIDTH = 1920;
 
 int main()
 {
+	Primitive p(PrimitiveType::pyramid);
 
 	//PrimitIve p = PrimitIve::GetPrimiTive(PrimitIve::Sphere);
 	HEIGHT = GetSystemMetrics(SM_CYSCREEN);
@@ -151,9 +153,9 @@ int main()
 	VAO1.Bind();
 
 	// Generates Vertex Buffer Object and links it to vertices
-	VerTexBuffer VBO1(vertices, sizeof(vertices));
+	VerTexBuffer VBO1(p.vertices->data(), p.vertices->size()*4);
 	// Generates Element Buffer Object and links it to indices
-	Triangle EBO1(indices, sizeof(indices));
+	Triangle EBO1(p.Indices->data(), p.Indices->size()*4);
 
 	// Links VBO to VAO
 	VAO1.LinkAttriBute(VBO1, 0, 3, GL_FLOAT, 11 * sizeof(float), (void*)0);
@@ -218,7 +220,7 @@ int main()
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
 		a += deltaTime * speed;
-		if (crntTime - prevTime >= 1 / 60)
+		if (crntTime - prevTime >= (float)(1 / 60))
 		{
 			rotation += deltaTime;
 			rotation = std::clamp(rotation, 0.0f, 1.0f);
@@ -256,7 +258,7 @@ int main()
 		texture.Bind();
 		shaderProgram.SeUniFormValueMattrix("model", model);
 		// Draw primitives, number of indices, datatype of indices, index of indices
-		glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(int), GL_UNSIGNED_INT, 0);
+		glDrawElements(GL_TRIANGLES,p.Indices->size(), GL_UNSIGNED_INT, 0);
 		camera.Matrix(shaderProgram, "camMatrix");
 
 

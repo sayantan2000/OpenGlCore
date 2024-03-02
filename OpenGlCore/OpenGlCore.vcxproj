@@ -151,26 +151,41 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="stb.cpp" />
-    <ClCompile Include="Triangles.cpp" />
+    <ClCompile Include="Camera.cpp" />
     <ClCompile Include="glad.c" />
-    <ClCompile Include="Main.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="Primitive.cpp" />
     <ClCompile Include="shaderClass.cpp" />
+    <ClCompile Include="stb.cpp" />
+    <ClCompile Include="Text.cpp" />
+    <ClCompile Include="Texture.cpp" />
+    <ClCompile Include="Triangles.cpp" />
     <ClCompile Include="VerTexArray.cpp" />
     <ClCompile Include="VerTexBuffer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shader\default.frag" />
     <None Include="Shader\default.vert" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Triangles.h" />
-    <ClInclude Include="shaderClass.h" />
-    <ClInclude Include="VerTexArray.h" />
-    <ClInclude Include="VerTexBuffer.h" />
+    <None Include="Shader\Triangle.frag" />
+    <None Include="Shader\Triangle.vert" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Images\World.jpg" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Camera.h" />
+    <ClInclude Include="Enums.h" />
+    <ClInclude Include="FontAtlas.h" />
+    <ClInclude Include="FTLabel.h" />
+    <ClInclude Include="GLFont.h" />
+    <ClInclude Include="GLUtils.h" />
+    <ClInclude Include="Primitive.h" />
+    <ClInclude Include="shaderClass.h" />
+    <ClInclude Include="Text.h" />
+    <ClInclude Include="Texture.h" />
+    <ClInclude Include="Triangles.h" />
+    <ClInclude Include="VerTexArray.h" />
+    <ClInclude Include="VerTexBuffer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
