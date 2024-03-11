@@ -1,37 +1,49 @@
 #version 330 core
+
+//structure Hold Position,Normal,Texcord,Color
+struct Data{
+	vec3 Position;
+	vec3 Normal;
+	vec4 color;
+	vec2 Texcord0;
+};
 out vec4 FragColor;
-in vec3 color;
-in vec2 texcord;
 uniform sampler2D tex0;
-vec4 Mul;
 uniform vec3 lightPos;
 uniform vec4 lightcolor;
 uniform vec3 CamPos;
-in  vec3 currentPos;
-in vec3 normal;
+in Data data;
+
+
+vec4 AmbientAndDiffuseLighting();
 
 void main()
 {
-	
 
-	//ambient Lighting 
+    FragColor = AmbientAndDiffuseLighting();
+}
+
+
+vec4 AmbientAndDiffuseLighting(){
+
+//ambient Lighting 
 	float ambient=0.2;
 
 
 	//Diffuse Lighting
-	vec3 Norm=normalize(normal);
-	vec3 lighdir=normalize(lightPos-currentPos);
-	float diffuse=max(dot(lighdir,normal),0.0);
+	vec3 Norm=normalize(data.Normal);
+	vec3 lighdir=normalize(lightPos-data.Position);
+	float diffuse=max(dot(lighdir,data.Normal),0.0);
 
 
 	//specularLighting
 	float specularLight = 0.50f;
-	vec3 viewDirection = normalize(CamPos - currentPos);
-	vec3 reflectionDirection = reflect(-lighdir, normal);
+	vec3 viewDirection = normalize(CamPos - data.Position);
+	vec3 reflectionDirection = reflect(-lighdir, data.Normal);
 	float specAmount = pow(max(dot(viewDirection, reflectionDirection), 0.0f), 8);
 	float specular = specAmount * specularLight;
+	
 
+	return texture(tex0,data.Texcord0)*lightcolor*(diffuse+ambient+specular);
 
-
-    FragColor = texture(tex0,texcord)*lightcolor*(diffuse+ambient+specular);
 }

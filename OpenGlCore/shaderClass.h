@@ -26,6 +26,7 @@ public:
 	// Deletes the Shader Program
 	void Delete();
 
+	void CompileError(unsigned int shader, const char* type,const char* filename);
 	void CompileError(unsigned int shader, const char* type);
 	void SetUniformValueF(const char* UniForm, float a_data);
 	void SeUniFormValueMattrix(const char* Uniform, glm::mat4& mat);

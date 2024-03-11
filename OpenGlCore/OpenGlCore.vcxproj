@@ -175,10 +175,6 @@
   <ItemGroup>
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Enums.h" />
-    <ClInclude Include="FontAtlas.h" />
-    <ClInclude Include="FTLabel.h" />
-    <ClInclude Include="GLFont.h" />
-    <ClInclude Include="GLUtils.h" />
     <ClInclude Include="Primitive.h" />
     <ClInclude Include="shaderClass.h" />
     <ClInclude Include="Text.h" />

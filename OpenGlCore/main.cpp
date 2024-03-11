@@ -9,7 +9,6 @@
 #include"Triangles.h"
 #include "Texture.h";
 #include "Camera.h";
-#include "algorithm";
 #include"Primitive.h";
 //#include"PrimitIve.h"
 
@@ -223,7 +222,7 @@ int main()
 		if (crntTime - prevTime >= (float)(1 / 60))
 		{
 			rotation += deltaTime;
-			rotation = std::clamp(rotation, 0.0f, 1.0f);
+			rotation = glm::clamp(rotation, 0.0f, 1.0f);
 			prevTime = crntTime;
 		}
 		//model = glm::mat4(1.00f);

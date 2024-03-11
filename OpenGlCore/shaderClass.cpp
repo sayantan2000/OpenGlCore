@@ -34,7 +34,7 @@ Shader::Shader(const char* vertexFile, const char* fragmentFile)
 	glShaderSource(vertexShader, 1, &vertexSource, NULL);
 	// Compile the Vertex Shader into machine code
 	glCompileShader(vertexShader);
-	CompileError(vertexShader, "VERTEX");
+	CompileError(vertexShader, "VERTEX",vertexFile);
 
 	// Create Fragment Shader Object and get its reference
 	GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -42,7 +42,7 @@ Shader::Shader(const char* vertexFile, const char* fragmentFile)
 	glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
 	// Compile the Vertex Shader into machine code
 	glCompileShader(fragmentShader);
-	CompileError(fragmentShader, "FRAGMENT");
+	CompileError(fragmentShader, "FRAGMENT",fragmentFile);
 
 	// Create Shader Program Object and get its reference
 	ID = glCreateProgram();
@@ -71,7 +71,7 @@ void Shader::Delete()
 	glDeleteProgram(ID);
 }
 
-void Shader::CompileError(unsigned int shader, const char* type)
+void Shader::CompileError(unsigned int shader, const char* type,const char* filename)
 {
 
 	GLint HasCompiled;
@@ -80,7 +80,7 @@ void Shader::CompileError(unsigned int shader, const char* type)
 		glGetShaderiv(shader, GL_COMPILE_STATUS, &HasCompiled);
 		if (HasCompiled == GL_FALSE) {
 			glGetShaderInfoLog(shader, sizeof(infolog), nullptr, infolog);
-			std::wcout << "SHADER_COMPILATION_ERR for :" << type << "\n" << std::endl;
+			std::wcout << "SHADER_COMPILATION_ERR for :" << type << "\n"<< filename << std::endl;
 			std::wcout << infolog;
 		}
 	}
@@ -89,7 +89,30 @@ void Shader::CompileError(unsigned int shader, const char* type)
 		glGetProgramiv(shader, GL_COMPILE_STATUS, &HasCompiled);
 		if (HasCompiled == GL_FALSE) {
 			glGetProgramInfoLog(shader, sizeof(infolog), nullptr, infolog);
-			std::wcout << "SHADER_COMPILATION_ERR for :" << type << "\n" << std::endl;
+			std::wcout << "SHADER_COMPILATION_ERR for :" << type << "\n" << filename << std::endl;
+			std::wcout << infolog;
+		}
+	}
+}
+
+void Shader::CompileError(unsigned int shader, const char* type)
+{
+	GLint HasCompiled;
+	char infolog[1024];
+	if (type != "PROGRAM") {
+		glGetShaderiv(shader, GL_COMPILE_STATUS, &HasCompiled);
+		if (HasCompiled == GL_FALSE) {
+			glGetShaderInfoLog(shader, sizeof(infolog), nullptr, infolog);
+			std::wcout << "SHADER_COMPILATION_ERR for :" << type << "\n"  << std::endl;
+			std::wcout << infolog;
+		}
+	}
+	else
+	{
+		glGetProgramiv(shader, GL_COMPILE_STATUS, &HasCompiled);
+		if (HasCompiled == GL_FALSE) {
+			glGetProgramInfoLog(shader, sizeof(infolog), nullptr, infolog);
+			std::wcout << "SHADER_COMPILATION_ERR for :" << type << "\n"  << std::endl;
 			std::wcout << infolog;
 		}
 	}
