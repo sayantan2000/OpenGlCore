@@ -159,6 +159,7 @@
     <ClCompile Include="stb.cpp" />
     <ClCompile Include="Text.cpp" />
     <ClCompile Include="Texture.cpp" />
+    <ClCompile Include="Time.cpp" />
     <ClCompile Include="Triangles.cpp" />
     <ClCompile Include="VerTexArray.cpp" />
     <ClCompile Include="VerTexBuffer.cpp" />
@@ -179,6 +180,7 @@
     <ClInclude Include="shaderClass.h" />
     <ClInclude Include="Text.h" />
     <ClInclude Include="Texture.h" />
+    <ClInclude Include="Time.h" />
     <ClInclude Include="Triangles.h" />
     <ClInclude Include="VerTexArray.h" />
     <ClInclude Include="VerTexBuffer.h" />

@@ -10,6 +10,7 @@
 #include "Texture.h";
 #include "Camera.h";
 #include"Primitive.h";
+#include "Time.h";
 //#include"PrimitIve.h"
 
 // Vertices coordinates
@@ -104,12 +105,11 @@ int main()
 	WIDTH = GetSystemMetrics(SM_CXSCREEN);
 	float currentFrame = glfwGetTime();
 	float lastFrame = currentFrame;
-	float deltaTime = 0.00f;
 
 	float a = 0;
 	float speed = 0.6;
 
-	a += deltaTime * speed;
+	a += Time::_DeltaTime * speed;
 	stbi_set_flip_vertically_on_load(true);
 	// Initialize GLFW
 	glfwInit();
@@ -152,9 +152,9 @@ int main()
 	VAO1.Bind();
 
 	// Generates Vertex Buffer Object and links it to vertices
-	VerTexBuffer VBO1(p.vertices->data(), p.vertices->size()*4);
+	VerTexBuffer VBO1(p.vertices->data(), p.vertices->size() * 4);
 	// Generates Element Buffer Object and links it to indices
-	Triangle EBO1(p.Indices->data(), p.Indices->size()*4);
+	Triangle EBO1(p.Indices->data(), p.Indices->size() * 4);
 
 	// Links VBO to VAO
 	VAO1.LinkAttriBute(VBO1, 0, 3, GL_FLOAT, 11 * sizeof(float), (void*)0);
@@ -213,15 +213,16 @@ int main()
 	// Main while loop
 	while (!glfwWindowShouldClose(window))
 	{
-		std::wcout << "DeltaTime :-" << deltaTime << "\n" << "\0";
+		std::wcout << "FixedtimeStamp :-" << Time::_FixedTimeStep << "\n" << "\0";
 		double crntTime = glfwGetTime();
 		currentFrame = glfwGetTime();
-		deltaTime = currentFrame - lastFrame;
+		Time::_DeltaTime = currentFrame - lastFrame;
+		Time::_TimeSinceLevelLoad += Time::_DeltaTime;
 		lastFrame = currentFrame;
-		a += deltaTime * speed;
+		a += Time::_DeltaTime * speed;
 		if (crntTime - prevTime >= (float)(1 / 60))
 		{
-			rotation += deltaTime;
+			rotation += Time::_DeltaTime;
 			rotation = glm::clamp(rotation, 0.0f, 1.0f);
 			prevTime = crntTime;
 		}
@@ -249,7 +250,7 @@ int main()
 		// Tell OpenGL which Shader Program we want to use
 		shaderProgram.Activate();
 		camera.updateMatrix(45.0f, 0.1f, 100.00f);
-		camera.Inputs(window, deltaTime);
+		camera.Inputs(window, Time::_DeltaTime);
 		shaderProgram.SetUniformValueF("scale", 1.00f);
 
 		// Bind the VAO so OpenGL knows to use it
@@ -257,7 +258,7 @@ int main()
 		texture.Bind();
 		shaderProgram.SeUniFormValueMattrix("model", model);
 		// Draw primitives, number of indices, datatype of indices, index of indices
-		glDrawElements(GL_TRIANGLES,p.Indices->size(), GL_UNSIGNED_INT, 0);
+		glDrawElements(GL_TRIANGLES, p.Indices->size(), GL_UNSIGNED_INT, 0);
 		camera.Matrix(shaderProgram, "camMatrix");
 
 
