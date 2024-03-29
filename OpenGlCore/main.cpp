@@ -65,6 +65,8 @@ GLfloat lightVertices[] =
 
 };
 
+
+
 //// Indices for vertices order
 //GLuint indices[] =
 //{
@@ -125,7 +127,7 @@ int main()
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	// Create a GLFWwindow object of 800 by 800 pixels, naming it "YoutubeOpenGL"
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "OpenGLCore", glfwGetPrimaryMonitor(), nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "OpenGLCore", nullptr, nullptr);
 	// Error check if the window fails to create
 	if (window == NULL)
 	{
@@ -212,13 +214,37 @@ int main()
 	glEnable(GL_DEPTH_TEST);
 	glm::mat4 model = glm::mat4(1.00f);
 
+	double _prevTime = 0.0;
+	double crntTime = 0.0;
+	double timeDiff;
+	// Keeps track of the amount of frames in timeDiff
+	unsigned int counter = 0;
 	// Main while loop
 	while (!glfwWindowShouldClose(window))
 	{
-		//double crntTime = glfwGetTime();
+
+		crntTime = glfwGetTime();
+		timeDiff = crntTime - prevTime;
+		counter++;
+
+		if (timeDiff >= 1.0 / 1000)
+		{
+			// Creates new title
+			std::string FPS = std::to_string((1.0 / timeDiff) * counter);
+			std::string ms = std::to_string((timeDiff / counter) * 1000);
+			std::string newTitle = "YoutubeOpenGL - " + FPS + "FPS / " + ms + "ms";
+			glfwSetWindowTitle(window, newTitle.c_str());
+
+			// Resets times and counter
+			_prevTime = crntTime;
+			counter = 0;
+
+			// Use this if you have disabled VSync
+			//camera.Inputs(window);
+		}
 		currentFrame = glfwGetTime();
 		Time::_DeltaTime = currentFrame - lastFrame;
-		Time::_TimeSinceLevelLoad += Time::_DeltaTime;
+
 		lastFrame = currentFrame;
 		a += Time::_DeltaTime * speed;
 		if (currentFrame - prevTime >= (float)(1 / 1000))
