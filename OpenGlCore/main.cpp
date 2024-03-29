@@ -93,6 +93,8 @@ GLuint lightIndices[] =
 	3, 0, 4
 };
 
+constexpr float const FOV = 60.00f;
+
 float oldTimeSinceStart = 0;
 int HEIGHT = 1080, WIDTH = 1920;
 
@@ -213,17 +215,17 @@ int main()
 	// Main while loop
 	while (!glfwWindowShouldClose(window))
 	{
-		double crntTime = glfwGetTime();
+		//double crntTime = glfwGetTime();
 		currentFrame = glfwGetTime();
 		Time::_DeltaTime = currentFrame - lastFrame;
 		Time::_TimeSinceLevelLoad += Time::_DeltaTime;
 		lastFrame = currentFrame;
 		a += Time::_DeltaTime * speed;
-		if (crntTime - prevTime >= (float)(1 / 60))
+		if (currentFrame - prevTime >= (float)(1 / 1000))
 		{
 			rotation += Time::_DeltaTime;
 			rotation = glm::clamp(rotation, 0.0f, 1.0f);
-			prevTime = crntTime;
+			prevTime = currentFrame;
 		}
 		//model = glm::mat4(1.00f);
 		model = glm::rotate(model, glm::radians(rotation), glm::vec3(0.0f, 1.0f, 0.00f));
@@ -248,7 +250,7 @@ int main()
 
 		// Tell OpenGL which Shader Program we want to use
 		shaderProgram.Activate();
-		camera.updateMatrix(45.0f, 0.1f, 100.00f);
+		camera.updateMatrix(FOV, 0.1f, 100.00f);
 		camera.Inputs(window, Time::_DeltaTime);
 		shaderProgram.SetUniformValueF("scale", 1.00f);
 
