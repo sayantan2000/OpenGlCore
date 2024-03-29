@@ -53,14 +53,17 @@ private:
 	};
 public:
 
-	std::vector<GLfloat> *vertices=nullptr;
-	std::vector<GLuint> *Indices=nullptr;
+	std::vector<GLfloat>* vertices = nullptr;
+	std::vector<GLuint>* Indices = nullptr;
 	Primitive(PrimitiveType a_type);
 
 	void GenerateSphere();
 	void GeneratePyramid();
-	
-	
+
+	int VerticesStride();
+	int TriangleStride();
+
+
 };
 
 

@@ -31,3 +31,12 @@ void Primitive::GeneratePyramid()
 		Indices->push_back(i);
 	}
 }
+
+int Primitive::VerticesStride()
+{
+	return vertices->size() * 4;
+}
+
+int Primitive::TriangleStride() {
+	return Indices->size() * 4;
+}

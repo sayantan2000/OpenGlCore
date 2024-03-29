@@ -152,9 +152,9 @@ int main()
 	VAO1.Bind();
 
 	// Generates Vertex Buffer Object and links it to vertices
-	VerTexBuffer VBO1(p.vertices->data(), p.vertices->size() * 4);
+	VerTexBuffer VBO1(p.vertices->data(), p.VerticesStride());
 	// Generates Element Buffer Object and links it to indices
-	Triangle EBO1(p.Indices->data(), p.Indices->size() * 4);
+	Triangle EBO1(p.Indices->data(), p.TriangleStride());
 
 	// Links VBO to VAO
 	VAO1.LinkAttriBute(VBO1, 0, 3, GL_FLOAT, 11 * sizeof(float), (void*)0);
@@ -213,7 +213,6 @@ int main()
 	// Main while loop
 	while (!glfwWindowShouldClose(window))
 	{
-		std::wcout << "FixedtimeStamp :-" << Time::_FixedTimeStep << "\n" << "\0";
 		double crntTime = glfwGetTime();
 		currentFrame = glfwGetTime();
 		Time::_DeltaTime = currentFrame - lastFrame;
