@@ -11,89 +11,6 @@
 #include "Camera.h";
 #include"Primitive.h";
 #include "Time.h";
-//#include"PrimitIve.h"
-
-// Vertices coordinates
-//GLfloat vertices[] =
-//{
-//	//trinagles
-//	//// cordinates										//colors                       
-//	//-0.5f, -0.5f * float(sqrt(3)) / 3, 0.0f,			0.3f,0.2f,.5f,											 // Lower left corner
-//	//0.5f, -0.5f * float(sqrt(3)) / 3, 0.0f,				0.3f,0.1f,.5f,											 // Lower right corner
-//	//0.0f, 0.5f * float(sqrt(3)) * 2 / 3, 0.0f,			0.3f,0.7f,.4f,											 // Upper corner
-//	//-0.5f / 2, 0.5f * float(sqrt(3)) / 6, 0.0f,			0.3f,0.5f,.2f,											 // Inner left
-//	//0.5f / 2, 0.5f * float(sqrt(3)) / 6, 0.0f,			0.3f,0.2f,.5f,											 // Inner right
-//	//0.0f, -0.5f * float(sqrt(3)) / 3, 0.0f															 // Inner down
-//
-//
-//	//square
-//	 // COORDINATES / COLORS / TexCoord  //
-//	//     COORDINATES     /        COLORS          /    TexCoord   /        NORMALS       //
-//	-0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f, 	 0.0f, 0.0f,      0.0f, -1.0f, 0.0f, // Bottom side
-//	-0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	 0.0f, 5.0f,      0.0f, -1.0f, 0.0f, // Bottom side
-//	 0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	 5.0f, 5.0f,      0.0f, -1.0f, 0.0f, // Bottom side
-//	 0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,      0.0f, -1.0f, 0.0f, // Bottom side
-//
-//	-0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f, 	 0.0f, 0.0f,     -0.8f, 0.5f,  0.0f, // Left Side
-//	-0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,     -0.8f, 0.5f,  0.0f, // Left Side
-//	 0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,     -0.8f, 0.5f,  0.0f, // Left Side
-//
-//	-0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,      0.0f, 0.5f, -0.8f, // Non-facing side
-//	 0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	 0.0f, 0.0f,      0.0f, 0.5f, -0.8f, // Non-facing side
-//	 0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,      0.0f, 0.5f, -0.8f, // Non-facing side
-//
-//	 0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	 0.0f, 0.0f,      0.8f, 0.5f,  0.0f, // Right side
-//	 0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,      0.8f, 0.5f,  0.0f, // Right side
-//	 0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,      0.8f, 0.5f,  0.0f, // Right side
-//
-//	 0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,      0.0f, 0.5f,  0.8f, // Facing side
-//	-0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f, 	 0.0f, 0.0f,      0.0f, 0.5f,  0.8f, // Facing side
-//	 0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,      0.0f, 0.5f,  0.8f  // Facing side
-//};
-GLfloat lightVertices[] =
-{ //     COORDINATES     //
-
-
-	-0.5f, 0.0f,  0.5f,
-	-0.5f, 0.0f, -0.5f,
-	 0.5f, 0.0f, -0.5f,
-	 0.5f, 0.0f,  0.5f,
-	 0.0f, 0.8f,  0.0f,
-
-
-
-
-};
-
-
-
-//// Indices for vertices order
-//GLuint indices[] =
-//{
-//	//traingle indices
-//	//0, 3, 5, // Lower left triangle
-//	//3, 2, 4, // Lower right triangle
-//	//5, 4, 1 // Upper triangle
-//
-//	//square indices
-//	0, 1, 2, // Bottom side
-//	0, 2, 3, // Bottom side
-//	4, 6, 5, // Left side
-//	7, 9, 8, // Non-facing side
-//	10, 12, 11, // Right side
-//	13, 15, 14 // Facing side
-//
-//};
-
-GLuint lightIndices[] =
-{
-	0, 1, 2,
-	0, 2, 3,
-	0, 1, 4,
-	1, 2, 4,
-	2, 3, 4,
-	3, 0, 4
-};
 
 constexpr float const FOV = 60.00f;
 
@@ -103,6 +20,7 @@ int HEIGHT = 1080, WIDTH = 1920;
 int main()
 {
 	Primitive p(PrimitiveType::pyramid);
+	Primitive sun(PrimitiveType::sphere);
 
 	//PrimitIve p = PrimitIve::GetPrimiTive(PrimitIve::Sphere);
 	HEIGHT = GetSystemMetrics(SM_CYSCREEN);
@@ -156,9 +74,9 @@ int main()
 	VAO1.Bind();
 
 	// Generates Vertex Buffer Object and links it to vertices
-	VerTexBuffer VBO1(p.vertices->data(), p.VerticesStride());
+	VerTexBuffer VBO1(p.vertices.data(), p.VerticesStride());
 	// Generates Element Buffer Object and links it to indices
-	Triangle EBO1(p.Indices->data(), p.TriangleStride());
+	Triangle EBO1(p.Indices.data(), p.TriangleStride());
 
 	// Links VBO to VAO
 	VAO1.LinkAttriBute(VBO1, 0, 3, GL_FLOAT, 11 * sizeof(float), (void*)0);
@@ -175,9 +93,9 @@ int main()
 	VerTexArray lightVAO;
 	lightVAO.Bind();
 	// Generates Vertex Buffer Object and links it to vertices
-	VerTexBuffer lightVBO(lightVertices, sizeof(lightVertices));
+	VerTexBuffer lightVBO(sun.vertices.data(), sun.VerticesStride());
 	// Generates Element Buffer Object and links it to indices
-	Triangle lightEBO(lightIndices, sizeof(lightIndices));
+	Triangle lightEBO(sun.Indices.data(), sun.TriangleStride());
 	// Links VBO attributes such as coordinates and colors to VAO
 	lightVAO.LinkAttriBute(lightVBO, 0, 3, GL_FLOAT, 3 * sizeof(float), (void*)0);
 	// Unbind all to prevent accidentally modifying them
@@ -194,15 +112,15 @@ int main()
 	Texture texture(TexPath.c_str(), GL_TEXTURE_2D, GL_TEXTURE0, GL_RGB, GL_UNSIGNED_BYTE);
 	texture.texUnit(shaderProgram, "tex0", 0);
 
-
+	glm::vec4 LightColor{ 0.2f,0.8f,0.9f,0.2f };
 
 	//getting the id of the uniform variable from active shader
 	shaderProgram.Activate();
 	shaderProgram.SetUniformValueVec3("lightPos", lightPos);
-	shaderProgram.SetUniformValueVec4("lightcolor", glm::vec4(1.0f));
+	shaderProgram.SetUniformValueVec4("lightcolor", LightColor);
 	lightShader.Activate();
 	lightShader.SeUniFormValueMattrix("model", lightModel);
-	lightShader.SetUniformValueVec4("LightColor", glm::vec4(1.00f));
+	lightShader.SetUniformValueVec4("LightColor", LightColor);
 
 
 
@@ -271,7 +189,7 @@ int main()
 		lightShader.SeUniFormValueMattrix("model", lightModel);
 		lightShader.SetUniformValueF("_Time", (float)glfwGetTime());
 		// Draw primitives, number of indices, datatype of indices, index of indices
-		glDrawElements(GL_TRIANGLES, sizeof(lightIndices) / sizeof(int), GL_UNSIGNED_INT, 0);
+		glDrawElements(GL_TRIANGLES, sun.Indices.size(), GL_UNSIGNED_INT, 0);
 
 
 		// Tell OpenGL which Shader Program we want to use
@@ -285,7 +203,7 @@ int main()
 		texture.Bind();
 		shaderProgram.SeUniFormValueMattrix("model", model);
 		// Draw primitives, number of indices, datatype of indices, index of indices
-		glDrawElements(GL_TRIANGLES, p.Indices->size(), GL_UNSIGNED_INT, 0);
+		glDrawElements(GL_TRIANGLES, p.Indices.size(), GL_UNSIGNED_INT, 0);
 		camera.Matrix(shaderProgram, "camMatrix");
 
 
