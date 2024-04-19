@@ -168,8 +168,8 @@
   <ItemGroup>
     <None Include="Shader\default.frag" />
     <None Include="Shader\default.vert" />
-    <None Include="Shader\Triangle.frag" />
-    <None Include="Shader\Triangle.vert" />
+    <None Include="Shader\Light.frag" />
+    <None Include="Shader\Light.vert" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Images\World.jpg" />

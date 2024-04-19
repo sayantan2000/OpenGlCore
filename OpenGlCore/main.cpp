@@ -45,7 +45,7 @@ int main()
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	// Create a GLFWwindow object of 800 by 800 pixels, naming it "YoutubeOpenGL"
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "OpenGLCore", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "OpenGLCore", glfwGetPrimaryMonitor(), nullptr);
 	// Error check if the window fails to create
 	if (window == NULL)
 	{
@@ -88,7 +88,7 @@ int main()
 	VBO1.Unbind();
 	EBO1.Unbind();
 
-	Shader lightShader("./Shader/Triangle.vert", "./Shader/Triangle.frag");
+	Shader lightShader("./Shader/Light.vert", "./Shader/Light.frag");
 	// Generates Vertex Array Object and binds it
 	VerTexArray lightVAO;
 	lightVAO.Bind();
@@ -112,7 +112,7 @@ int main()
 	Texture texture(TexPath.c_str(), GL_TEXTURE_2D, GL_TEXTURE0, GL_RGB, GL_UNSIGNED_BYTE);
 	texture.texUnit(shaderProgram, "tex0", 0);
 
-	glm::vec4 LightColor{ 0.2f,0.8f,0.9f,0.2f };
+	glm::vec4 LightColor{ 1.00f,0.81f,0.50f,1 };
 
 	//getting the id of the uniform variable from active shader
 	shaderProgram.Activate();
@@ -121,6 +121,7 @@ int main()
 	lightShader.Activate();
 	lightShader.SeUniFormValueMattrix("model", lightModel);
 	lightShader.SetUniformValueVec4("LightColor", LightColor);
+	lightShader.SetUniformValueVec3("Scale", glm::vec3(0.2f));
 
 
 
@@ -140,7 +141,6 @@ int main()
 	// Main while loop
 	while (!glfwWindowShouldClose(window))
 	{
-
 		crntTime = glfwGetTime();
 		timeDiff = crntTime - prevTime;
 		counter++;
@@ -150,7 +150,7 @@ int main()
 			// Creates new title
 			std::string FPS = std::to_string((1.0 / timeDiff) * counter);
 			std::string ms = std::to_string((timeDiff / counter) * 1000);
-			std::string newTitle = "YoutubeOpenGL - " + FPS + "FPS / " + ms + "ms";
+			std::string newTitle = "OpenGlCore - " + FPS + "FPS / " + ms + "ms";
 			glfwSetWindowTitle(window, newTitle.c_str());
 
 			// Resets times and counter
@@ -194,7 +194,7 @@ int main()
 
 		// Tell OpenGL which Shader Program we want to use
 		shaderProgram.Activate();
-		camera.updateMatrix(FOV, 0.1f, 100.00f);
+		camera.updateMatrix(FOV, 0.3f, 100);
 		camera.Inputs(window, Time::_DeltaTime);
 		shaderProgram.SetUniformValueF("scale", 1.00f);
 

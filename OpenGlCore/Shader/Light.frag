@@ -5,5 +5,5 @@ uniform vec4 LightColor;
 uniform float _Time;
 void main()
 {
-   FragColor =LightColor;
+   gl_FragColor =LightColor;
 }

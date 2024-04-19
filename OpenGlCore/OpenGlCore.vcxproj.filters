@@ -68,10 +68,10 @@
     <None Include="Shader\default.vert">
       <Filter>Resource Files\Shader</Filter>
     </None>
-    <None Include="Shader\Triangle.vert">
+    <None Include="Shader\Light.vert">
       <Filter>Resource Files\Shader</Filter>
     </None>
-    <None Include="Shader\Triangle.frag">
+    <None Include="Shader\Light.frag">
       <Filter>Resource Files\Shader</Filter>
     </None>
   </ItemGroup>
