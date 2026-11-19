@@ -11,6 +11,7 @@
 struct aiNode;
 struct aiScene;
 struct aiMesh;
+struct aiTexture;
 
 // Loads a 3D model via Assimp (FBX, OBJ, glTF, ...) and stores it as a set of Meshes
 // in this project's standard 11-float vertex layout (pos3, color3, uv2, normal3), so a
@@ -19,10 +20,13 @@ class Model
 {
 public:
 	explicit Model(const std::string& path);
+	~Model();
+	Model(const Model&) = delete;
+	Model& operator=(const Model&) = delete;
 
-	// Draws every sub-mesh, setting the "albedo" uniform to each sub-mesh's imported
-	// material diffuse color. Caller activates `shader` and sets the shared uniforms
-	// (camMatrix, model, lightPos, ...) first.
+	// Draws every sub-mesh. For each: if it has an imported diffuse texture, binds it and
+	// sets hasTexture=1; otherwise sets the material diffuse color via the "albedo" uniform
+	// and hasTexture=0. Caller activates `shader` and sets the shared uniforms first.
 	void Draw(Shader& shader);
 
 	size_t MeshCount() const { return meshes.size(); }
@@ -39,9 +43,11 @@ private:
 	struct SubMesh
 	{
 		Mesh mesh;
-		glm::vec3 albedo; // imported material diffuse color (default grey)
+		glm::vec3 albedo;       // imported material diffuse color (default grey)
+		GLuint textureID = 0;   // imported diffuse texture, 0 = none (use albedo)
 	};
 	std::vector<SubMesh> meshes;
+	std::string directory;      // folder of the model file (for external textures)
 	glm::vec3 boundsMin = glm::vec3(0.0f);
 	glm::vec3 boundsMax = glm::vec3(0.0f);
 
@@ -49,5 +55,8 @@ private:
 	// baking it into the vertices of the meshes that node references.
 	void ProcessNode(const aiNode* node, const aiScene* scene, const glm::mat4& parentTransform);
 	void AddMesh(const aiMesh* mesh, const aiScene* scene, const glm::mat4& transform);
+	// Texture helpers (return a GL texture id, or 0 on failure).
+	GLuint LoadTextureFromFile(const std::string& path);
+	GLuint LoadEmbeddedTexture(const aiTexture* tex);
 };
 #endif

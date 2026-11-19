@@ -159,10 +159,14 @@ Foundation for everything else.
   transform and bakes it into the mesh vertices (positions + inverse-transpose for
   normals), so multi-part FBX files are positioned correctly. Bounds are computed from the
   transformed positions.
-- **Materials**: per sub-mesh diffuse color is imported (`AI_MATKEY_COLOR_DIFFUSE`) and
-  applied via `Draw(Shader&)` setting the `albedo` uniform per mesh (default grey if none).
-- **Still not handled**: texture/normal-map import (needs a textured test model + sampler
-  binding + shader branch), and skinning/animation (bind pose only).
+- **Materials**: per sub-mesh diffuse color is imported (`AI_MATKEY_COLOR_DIFFUSE`).
+- **Textures**: per sub-mesh diffuse texture is imported — external files (resolved against
+  the model's folder) and embedded textures (compressed via stb, or raw BGRA texels). The
+  model shader (`albedo.frag`) branches on a `hasTexture` uniform: textured sub-meshes
+  sample `modelTex` (unit 0), untextured ones use the albedo color. `Model` owns the GL
+  textures and frees them in its destructor.
+- **Still not handled**: normal/specular/PBR maps (diffuse only), and skinning/animation
+  (bind pose only).
 
 ### 3.3 Platform decoupling — ✅ DONE (2026-11-19)
 - **Done**: removed `Windows.h`/`WinUser.h`; monitor size now comes from

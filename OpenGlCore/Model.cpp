@@ -1,12 +1,31 @@
 #include "Model.h"
+#include "GLUtils.h"
 #include <stdexcept>
 #include <iostream>
 #include <limits>
 #include <algorithm>
 #include <glm/gtc/matrix_transform.hpp>
+#include <stb/stb.h>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+
+// Uploads 8-bit image data as a GL texture with mipmaps; returns the texture id.
+static GLuint MakeGLTexture(const unsigned char* data, int w, int h, int channels)
+{
+	GLenum format = (channels == 1) ? GL_RED : (channels == 3) ? GL_RGB : GL_RGBA;
+	GLuint id = 0;
+	glGenTextures(1, &id);
+	glBindTexture(GL_TEXTURE_2D, id);
+	glTexImage2D(GL_TEXTURE_2D, 0, format, w, h, 0, format, GL_UNSIGNED_BYTE, data);
+	glGenerateMipmap(GL_TEXTURE_2D);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	return id;
+}
 
 // Assimp matrices are row-major; glm is column-major, so transpose on conversion.
 static glm::mat4 ToGlm(const aiMatrix4x4& m)
@@ -31,6 +50,10 @@ Model::Model(const std::string& path)
 		std::cerr << "[MODEL ERROR] " << msg << std::endl;
 		throw std::runtime_error(msg);
 	}
+
+	// Remember the model's folder so external texture paths can be resolved.
+	size_t slash = path.find_last_of("/\\");
+	directory = (slash == std::string::npos) ? std::string(".") : path.substr(0, slash);
 
 	boundsMin = glm::vec3(std::numeric_limits<float>::max());
 	boundsMax = glm::vec3(std::numeric_limits<float>::lowest());
@@ -61,13 +84,30 @@ void Model::AddMesh(const aiMesh* mesh, const aiScene* scene, const glm::mat4& t
 	// Normals transform by the inverse-transpose of the upper-left 3x3.
 	glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(transform)));
 
-	// Import the material diffuse color as the albedo (default to light grey).
+	// Import the material diffuse color (albedo) and, if present, the diffuse texture.
 	glm::vec3 albedo(0.8f, 0.8f, 0.8f);
+	GLuint textureID = 0;
 	if (scene->mNumMaterials > 0 && mesh->mMaterialIndex < scene->mNumMaterials)
 	{
+		const aiMaterial* mat = scene->mMaterials[mesh->mMaterialIndex];
+
 		aiColor3D c(0.8f, 0.8f, 0.8f);
-		if (scene->mMaterials[mesh->mMaterialIndex]->Get(AI_MATKEY_COLOR_DIFFUSE, c) == AI_SUCCESS)
+		if (mat->Get(AI_MATKEY_COLOR_DIFFUSE, c) == AI_SUCCESS)
 			albedo = glm::vec3(c.r, c.g, c.b);
+
+		if (mat->GetTextureCount(aiTextureType_DIFFUSE) > 0)
+		{
+			aiString texPath;
+			if (mat->GetTexture(aiTextureType_DIFFUSE, 0, &texPath) == AI_SUCCESS)
+			{
+				// Embedded (either "*index" or resolvable via GetEmbeddedTexture), else file.
+				const aiTexture* embedded = scene->GetEmbeddedTexture(texPath.C_Str());
+				if (embedded)
+					textureID = LoadEmbeddedTexture(embedded);
+				else
+					textureID = LoadTextureFromFile(directory + "/" + texPath.C_Str());
+			}
+		}
 	}
 
 	std::vector<GLfloat> vertices;
@@ -129,7 +169,60 @@ void Model::AddMesh(const aiMesh* mesh, const aiScene* scene, const glm::mat4& t
 
 	meshes.push_back(SubMesh{
 		Mesh(vertices, indices, { {3, GL_FLOAT}, {3, GL_FLOAT}, {2, GL_FLOAT}, {3, GL_FLOAT} }),
-		albedo });
+		albedo, textureID });
+}
+
+GLuint Model::LoadTextureFromFile(const std::string& path)
+{
+	stbi_set_flip_vertically_on_load(true);
+	int w = 0, h = 0, n = 0;
+	unsigned char* data = stbi_load(path.c_str(), &w, &h, &n, 0);
+	if (!data)
+	{
+		std::cerr << "[MODEL WARN] could not load texture: " << path << std::endl;
+		return 0;
+	}
+	GLuint id = MakeGLTexture(data, w, h, n);
+	stbi_image_free(data);
+	return id;
+}
+
+GLuint Model::LoadEmbeddedTexture(const aiTexture* tex)
+{
+	// mHeight == 0 => compressed (png/jpg bytes in pcData, mWidth = byte count).
+	if (tex->mHeight == 0)
+	{
+		stbi_set_flip_vertically_on_load(false);
+		int w = 0, h = 0, n = 0;
+		unsigned char* data = stbi_load_from_memory(
+			reinterpret_cast<const unsigned char*>(tex->pcData), (int)tex->mWidth, &w, &h, &n, 0);
+		if (!data)
+		{
+			std::cerr << "[MODEL WARN] could not decode embedded texture" << std::endl;
+			return 0;
+		}
+		GLuint id = MakeGLTexture(data, w, h, n);
+		stbi_image_free(data);
+		return id;
+	}
+	// Uncompressed: aiTexel array is BGRA; repack to RGBA.
+	int count = tex->mWidth * tex->mHeight;
+	std::vector<unsigned char> rgba((size_t)count * 4);
+	for (int i = 0; i < count; i++)
+	{
+		rgba[i * 4 + 0] = tex->pcData[i].r;
+		rgba[i * 4 + 1] = tex->pcData[i].g;
+		rgba[i * 4 + 2] = tex->pcData[i].b;
+		rgba[i * 4 + 3] = tex->pcData[i].a;
+	}
+	return MakeGLTexture(rgba.data(), tex->mWidth, tex->mHeight, 4);
+}
+
+Model::~Model()
+{
+	for (auto& sub : meshes)
+		if (sub.textureID != 0)
+			glDeleteTextures(1, &sub.textureID);
 }
 
 float Model::ScaleToFit(float targetSize) const
@@ -142,9 +235,21 @@ float Model::ScaleToFit(float targetSize) const
 
 void Model::Draw(Shader& shader)
 {
+	GLint hasTexLoc = glGetUniformLocation(shader.ID, "hasTexture");
 	for (auto& sub : meshes)
 	{
-		shader.SetUniformValueVec3("albedo", sub.albedo);
+		if (sub.textureID != 0)
+		{
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, sub.textureID);
+			glUniform1i(hasTexLoc, 1);
+		}
+		else
+		{
+			shader.SetUniformValueVec3("albedo", sub.albedo);
+			glUniform1i(hasTexLoc, 0);
+		}
 		sub.mesh.Draw();
 	}
+	glBindTexture(GL_TEXTURE_2D, 0);
 }

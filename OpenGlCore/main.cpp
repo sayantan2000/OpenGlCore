@@ -124,8 +124,9 @@ int main()
 	modelShader.SetUniformValueVec3("lightPos", lightPos);
 	modelShader.SetUniformValueVec4("lightcolor", LightColor);
 	modelShader.SetUniformValueF("scale", 1.0f);
-	glm::vec3 cubeAlbedo(0.15f, 0.55f, 0.85f); // base color (teal-blue)
+	glm::vec3 cubeAlbedo(0.15f, 0.55f, 0.85f); // fallback base color (teal-blue)
 	modelShader.SetUniformValueVec3("albedo", cubeAlbedo);
+	glUniform1i(glGetUniformLocation(modelShader.ID, "modelTex"), 0); // diffuse sampler -> unit 0
 
 
 
