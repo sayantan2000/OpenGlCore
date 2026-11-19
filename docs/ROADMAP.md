@@ -23,8 +23,9 @@
 - See `docs/RENDERING_PIPELINE.md` for the full flow.
 
 ## Phase 5 — Remaining / future (Low–Medium)
-- Ship a **PBR texture-map set** (albedo/normal/metallic/roughness/AO) + a mapped demo mesh;
-  the shader path exists but is untested with real maps.
+- ✅ **PBR texture-mapped mesh**: the wooden chair (`Models/wooden_chair_ukipagtbw_high/`)
+  renders with BaseColor/Normal/Roughness/AO maps (metallic=0) via `Model::DrawGeometry` +
+  an external `PbrMaterial`. (Metallic-map path still unexercised — no metal asset.)
 - **IBL from a loaded equirectangular `.hdr`** (stb `loadf` + equirect→cubemap shader),
   selectable alongside the procedural sky.
 - **Framebuffer resize** handling (recreate HDR target + update camera/Text on resize).

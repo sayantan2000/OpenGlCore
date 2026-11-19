@@ -10,6 +10,8 @@
 #include "Text.h"
 #include "IBL.h"
 #include "Light.h"
+#include "Texture.h"
+#include "PbrMaterial.h"
 #include "shaderClass.h"
 
 // Owns the window, render targets and scene, and runs the main loop. This is the single
@@ -36,12 +38,16 @@ private:
 	std::unique_ptr<Shader> hdrShader;
 	std::unique_ptr<IBL>    ibl;
 	std::unique_ptr<Mesh>   sphere;
-	std::unique_ptr<Model>  model;
+	std::unique_ptr<Model>  chair;
 	std::unique_ptr<Text>   hud;
 
+	// Chair PBR texture maps (kept alive so their GL ids stay valid) + material.
+	std::unique_ptr<Texture> chairAlbedo, chairNormal, chairRoughness, chairAO;
+	PbrMaterial chairMaterial;
+	float chairScale = 1.0f;
+	glm::vec3 chairCenter = glm::vec3(0.0f);
+
 	LightSet lights;
-	float modelScale = 1.0f;
-	glm::vec3 modelCenter = glm::vec3(0.0f);
 
 	GLuint hdrFBO = 0, hdrColor = 0, hdrDepth = 0;
 	GLuint emptyVAO = 0;       // for the fullscreen tonemap triangle

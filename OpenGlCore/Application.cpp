@@ -35,10 +35,28 @@ Application::Application()
 			std::vector<VertexAttribute>{ {3, GL_FLOAT}, {3, GL_FLOAT}, {2, GL_FLOAT}, {3, GL_FLOAT} });
 	}
 
-	// Loaded model (reuses the PBR shader via DrawPBR).
-	model = std::make_unique<Model>("./Models/Cube.fbx");
-	modelScale = model->ScaleToFit(3.0f);
-	modelCenter = model->Center();
+	// Wooden chair: load geometry + its full PBR texture set (metallic=0, it's wood).
+	{
+		const std::string dir = "./Models/wooden_chair_ukipagtbw_high/";
+		const std::string base = dir + "Wooden_Chair_ukipagtbw_High_4K_";
+		chair = std::make_unique<Model>((dir + "Wooden_Chair_ukipagtbw_High.fbx").c_str());
+		chairScale = chair->ScaleToFit(6.0f);
+		chairCenter = chair->Center();
+
+		chairAlbedo    = std::make_unique<Texture>((base + "BaseColor.jpg").c_str(), GL_TEXTURE_2D, GL_TEXTURE0, GL_RGB, GL_UNSIGNED_BYTE);
+		chairNormal    = std::make_unique<Texture>((base + "Normal.jpg").c_str(),    GL_TEXTURE_2D, GL_TEXTURE0, GL_RGB, GL_UNSIGNED_BYTE);
+		chairRoughness = std::make_unique<Texture>((base + "Roughness.jpg").c_str(), GL_TEXTURE_2D, GL_TEXTURE0, GL_RGB, GL_UNSIGNED_BYTE);
+		chairAO        = std::make_unique<Texture>((base + "AO.jpg").c_str(),        GL_TEXTURE_2D, GL_TEXTURE0, GL_RGB, GL_UNSIGNED_BYTE);
+
+		chairMaterial.albedo = glm::vec3(1.0f);
+		chairMaterial.metallic = 0.0f;   // wood is dielectric; no metallic map in the set
+		chairMaterial.roughness = 1.0f;  // overridden by the roughness map
+		chairMaterial.ao = 1.0f;
+		chairMaterial.albedoMap = chairAlbedo->ID;
+		chairMaterial.normalMap = chairNormal->ID;
+		chairMaterial.roughnessMap = chairRoughness->ID;
+		chairMaterial.aoMap = chairAO->ID;
+	}
 
 	hud = std::make_unique<Text>("./Fonts/arial.ttf", 48, fbWidth, fbHeight);
 
@@ -149,12 +167,13 @@ void Application::RenderSceneHDR()
 		}
 	}
 
-	// Loaded model, placed in front of the grid.
-	glm::mat4 mm = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 8.0f));
-	mm = glm::scale(mm, glm::vec3(modelScale));
-	mm = glm::translate(mm, -modelCenter);
-	pbrShader->SetUniformMat4("model", mm);
-	model->DrawPBR(*pbrShader);
+	// Wooden chair, centered in front of the grid, drawn with its full PBR texture set.
+	chairMaterial.Bind(*pbrShader);
+	glm::mat4 cm = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -4.0f, 9.0f));
+	cm = glm::scale(cm, glm::vec3(chairScale));
+	cm = glm::translate(cm, -chairCenter);
+	pbrShader->SetUniformMat4("model", cm);
+	chair->DrawGeometry();
 
 	// Skybox (environment) last, filling only un-written depth.
 	ibl->RenderBackground(

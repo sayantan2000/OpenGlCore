@@ -33,6 +33,10 @@ public:
 	// and non-metallic defaults. Other PBR maps are disabled (basic imports have none).
 	void DrawPBR(Shader& shader);
 
+	// Draws only the geometry (no material/uniform/texture changes). Use when an external
+	// PbrMaterial has already been bound to the active shader.
+	void DrawGeometry();
+
 	size_t MeshCount() const { return meshes.size(); }
 
 	// Axis-aligned bounds of the loaded geometry (model space).

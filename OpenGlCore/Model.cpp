@@ -267,6 +267,12 @@ void Model::DrawPBR(Shader& shader)
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+void Model::DrawGeometry()
+{
+	for (auto& sub : meshes)
+		sub.mesh.Draw();
+}
+
 void Model::Draw(Shader& shader)
 {
 	GLint hasTexLoc = glGetUniformLocation(shader.ID, "hasTexture");
