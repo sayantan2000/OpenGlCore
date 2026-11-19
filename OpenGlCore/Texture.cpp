@@ -1,4 +1,6 @@
 #include"Texture.h"
+#include"GLUtils.h"
+#include<stdexcept>
 
 Texture::Texture(const char* image, GLenum texType, GLenum slot, GLenum format, GLenum pixelType)
 {
@@ -14,6 +16,14 @@ Texture::Texture(const char* image, GLenum texType, GLenum slot, GLenum format, 
 	stbi_set_flip_vertically_on_load(true);
 	// Reads the image from a file and stores it in bytes
 	unsigned char* bytes = stbi_load(image, &widthImg, &heightImg, &numColCh, 0);
+	if (bytes == nullptr)
+	{
+		std::string msg = "Failed to load texture image: '";
+		msg += image;
+		msg += "'. Check the path / working directory.";
+		std::cerr << "[TEXTURE ERROR] " << msg << std::endl;
+		throw std::runtime_error(msg);
+	}
 
 	// Generates an OpenGL texture object
 	glGenTextures(1, &ID);
@@ -43,6 +53,7 @@ Texture::Texture(const char* image, GLenum texType, GLenum slot, GLenum format, 
 
 	// Unbinds the OpenGL Texture object so that it can't accidentally be modified
 	glBindTexture(texType, 0);
+	glCheckError();
 }
 
 void Texture::texUnit(Shader& shader, const char* uniform, GLuint unit)

@@ -65,7 +65,9 @@ int main()
 	// Scope block: every RAII GL wrapper below is destroyed at this block's closing
 	// brace, which runs BEFORE glfwDestroyWindow/glfwTerminate. Freeing GL objects while
 	// the context is still current is required for the deletes to actually take effect.
-	{
+	// Wrapped in try/catch so a missing shader/texture exits cleanly (RAII still unwinds)
+	// instead of std::terminate -> abort.
+	try {
 
 	// Generates Shader object using shaders defualt.vert and default.frag
 	Shader shaderProgram("./Shader/default.vert", "./SHader/default.frag");
@@ -220,6 +222,15 @@ int main()
 
 	} // end GL-object scope: all RAII wrappers (shaders, VAOs, VBOs, EBOs, texture)
 	  // are destroyed here, while the GL context is still current.
+	catch (const std::exception& e)
+	{
+		// RAII wrappers constructed before the throw are destroyed during stack
+		// unwinding (context still current), so GL resources are freed correctly.
+		std::cerr << "[FATAL] " << e.what() << std::endl;
+		glfwDestroyWindow(window);
+		glfwTerminate();
+		return -1;
+	}
 
 	// Delete window before ending the program
 	glfwDestroyWindow(window);

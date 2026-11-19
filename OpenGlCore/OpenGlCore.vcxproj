@@ -177,6 +177,7 @@
   <ItemGroup>
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Enums.h" />
+    <ClInclude Include="GLUtils.h" />
     <ClInclude Include="Model.h" />
     <ClInclude Include="Primitive.h" />
     <ClInclude Include="shaderClass.h" />

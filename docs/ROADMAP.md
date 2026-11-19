@@ -70,11 +70,19 @@ Foundation for everything else.
 - **Trade-off accepted**: objects now have fixed lifetimes tied to that block — correct and
   conventional.
 
-### 1.2 GL error checking utility
-- **Proposal**: Add a `glCheck()`/debug-callback helper (GL 4.3 `glDebugMessageCallback`
-  if context allows, else manual `glGetError` wrapper) used around resource creation.
-- **Trade-offs**: Minor; big debugging payoff.
-- **Priority**: High.
+### 1.2 GL error checking + graceful asset-load failure — ✅ DONE (2026-11-19)
+- **Done**: added `GLUtils.h` with `glCheckError()` (drains `glGetError`, logs code +
+  file:line; no KHR_debug dependency, works on the 3.3 context). Called after buffer
+  creation (`VerTexBuffer`, `Triangle`), attribute linking (`VerTexArray`), and texture
+  creation (`Texture`).
+- **Graceful failures**: `get_file_contents` now throws `std::runtime_error` with the
+  missing path (was `throw(errno)` → abort). `Texture` throws if `stbi_load` returns null.
+  `main`'s GL section is wrapped in try/catch that logs `[FATAL] ...` and exits -1; RAII
+  unwinding frees any already-created GL objects while the context is current.
+- **Note**: this is the robust counterpart to the asset-copy build step — if assets are
+  genuinely missing the app now reports which file instead of aborting.
+- **Future (optional)**: upgrade to `glDebugMessageCallback` if the context is raised to
+  4.3+ for automatic, richer messages.
 
 ---
 

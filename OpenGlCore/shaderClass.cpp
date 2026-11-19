@@ -1,6 +1,9 @@
 #include"shaderClass.h"
+#include<stdexcept>
 
-// Reads a text file and outputs a string with everything in the text file
+// Reads a text file and outputs a string with everything in the text file.
+// Throws std::runtime_error with a clear message if the file cannot be opened,
+// instead of throwing a bare errno (which surfaced as an unhelpful "abort").
 std::string get_file_contents(const char* filename)
 {
 	std::ifstream in(filename, std::ios::binary);
@@ -14,7 +17,11 @@ std::string get_file_contents(const char* filename)
 		in.close();
 		return(contents);
 	}
-	throw(errno);
+	std::string msg = "Failed to open file: '";
+	msg += filename;
+	msg += "'. Check the working directory (shaders/images are loaded via relative paths).";
+	std::cerr << "[SHADER ERROR] " << msg << std::endl;
+	throw std::runtime_error(msg);
 }
 
 // Constructor that build the Shader Program from 2 different shaders

@@ -45,10 +45,15 @@ engine yet — it is a single `main.cpp` demo backed by thin RAII-less wrapper c
   inside a scope block in `main` (before `glfwTerminate`).
 
 ## Known-broken / sharp edges (details in docs/ROADMAP.md)
-- No GL error checking around buffer/texture creation; missing shader file does
-  `throw(errno)` → abort (Phase 1.2, pending).
 - `Triangle` means EBO; `VerticesStride()`/`TriangleStride()` return bytes (Phase 2.1).
 - Sphere is position-only (light marker); no normals/UVs if you want it lit (Phase 0.2 note).
+- `default.vert` normal matrix uses `transpose(mat3(model))` not inverse-transpose; fine
+  for rotation-only, wrong under non-uniform scale (Phase 2.4).
+
+## Error handling / debugging
+- `GLUtils.h` provides `glCheckError()` — call it after GL calls you want to validate.
+- Missing shader/texture files throw `std::runtime_error`; `main` catches, logs `[FATAL]`,
+  and exits cleanly (no more raw abort).
 
 ## Timing note
 Both pyramid rotation (`main.cpp`) and camera movement (`Camera.cpp`) are now delta-time

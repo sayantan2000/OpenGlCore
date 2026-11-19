@@ -1,4 +1,5 @@
 #include"VerTexArray.h"
+#include"GLUtils.h"
 
 // Constructor that generates a VAO ID
 VerTexArray::VerTexArray()
@@ -13,6 +14,7 @@ void VerTexArray::LinkAttriBute(VerTexBuffer& VBO, GLuint layout, GLuint numComp
 	glVertexAttribPointer(layout, numComponents, typr, GL_FALSE, stride, offset);
 	glEnableVertexAttribArray(layout);
 	VBO.Unbind();
+	glCheckError();
 }
 
 // Binds the VAO

@@ -1,4 +1,5 @@
 #include"Triangles.h"
+#include"GLUtils.h"
 
 // Constructor that generates a Elements Buffer Object and links it to indices
 Triangle::Triangle(GLuint* indices, GLsizeiptr size)
@@ -6,6 +7,7 @@ Triangle::Triangle(GLuint* indices, GLsizeiptr size)
 	glGenBuffers(1, &ID);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ID);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, size, indices, GL_STATIC_DRAW);
+	glCheckError();
 }
 
 // Binds the Triangle
