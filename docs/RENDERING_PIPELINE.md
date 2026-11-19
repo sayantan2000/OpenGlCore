@@ -7,8 +7,14 @@
 2. `Application` builds: `Camera`, `pbr`/`hdr` shaders, `IBL`, the sphere `Mesh`, the
    `Model`, the `Text` HUD, the `LightSet`, and the HDR framebuffer.
 3. **IBL build** (`IBL` ctor, one-time, into FBOs then viewport restored):
-   - Render the **procedural sky** (`sky.frag`) into a 512³ `RGB16F` environment cubemap
-     (6 faces via `cubemap.vert` + capture projection/views); mipmaps generated.
+   - **Environment source**: load an equirectangular HDR image into a `RGB16F` texture,
+     preserving HDR values and flipped vertically — `.exr` via **tinyexr** (zlib-backed),
+     `.hdr` via stb `stbi_loadf`. Render it onto the cube faces with `equirect.frag`
+     (direction → lat/long UV: `uv = (atan(z,x), asin(y)) * (1/2pi, 1/pi) + 0.5`). If the
+     file is missing, fall back to the **procedural sky** (`sky.frag`). Either way the result
+     fills a 512³ `RGB16F` env cubemap (6 faces via `cubemap.vert` + the standard capture
+     projection/views); mipmaps generated. The equirect source texture is freed after
+     capture (only the cubemap is kept). Default asset: `./SKYBOX/ballroom_4k.exr`.
    - Convolve it into a 32³ **irradiance** cubemap (`irradiance.frag`).
    - GGX-importance-sample it into a 128³ **prefiltered** specular cubemap with 5 mips
      (`prefilter.frag`), roughness mapped to mip level.
@@ -23,8 +29,10 @@
    - Draw the 7×7 sphere grid: per-sphere `u_metallic` (row), `u_roughness` (col), shared
      `u_albedo`; map flags off (scalar material).
    - Draw the model via `Model::DrawPBR` (albedo color/texture, dielectric defaults).
-   - Draw the **skybox** (`background.*`) sampling the env cubemap, depth `LEQUAL`, depth
-     forced to 1.0 so it fills only un-written pixels.
+   - Draw the **skybox** (`background.*`) sampling the env cubemap (same cubemap the IBL
+     uses — no duplication), view rotation only (translation dropped) so it stays centered
+     on the camera, depth `LEQUAL` with depth forced to 1.0 so it fills only un-written
+     pixels. `u_bgIntensity` scales skybox brightness independently of the HDR exposure.
 4. **Tonemap pass → default framebuffer** (`TonemapToScreen()`): fullscreen triangle
    (`hdr.vert`, no VBO), `hdr.frag` samples the HDR color, applies ACES + exposure, then
    linear→sRGB gamma.

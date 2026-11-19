@@ -7,14 +7,20 @@
 A **learning-oriented real-time renderer** in modern OpenGL 3.3 (Windows / Visual Studio
 2022, C++20). It now implements a **metallic-roughness PBR pipeline** (Cook-Torrance) with
 directional/point/spot lights, **Image-Based Lighting** (irradiance + prefilter + BRDF
-LUT) from a procedural HDR sky, **HDR rendering with ACES tonemapping**, an FBX/OBJ/glTF
-model loader (Assimp), and on-screen text (FreeType). The code is organized into small
-RAII modules; `main.cpp` is just an entry point.
+LUT) from an **equirectangular HDRI** (or a procedural sky fallback), an **HDRI skybox**,
+**HDR rendering with ACES tonemapping**, an FBX/OBJ/glTF model loader (Assimp), and
+on-screen text (FreeType). The default scene renders a textured wooden chair (full PBR
+map set) against the environment. The code is organized into small RAII modules;
+`main.cpp` is just an entry point.
 
 ## Build & run
 - **Prerequisite (once)**: restore Assimp via the VS-bundled vcpkg from the repo root:
   `& "C:\Program Files\Microsoft Visual Studio\18\Community\VC\vcpkg\vcpkg.exe" install --triplet x64-windows` → populates `vcpkg_installed/` (gitignored). FreeType is vendored (prebuilt libs + headers in `Libraries/`).
 - **Font (once)**: put a `.ttf` at `OpenGlCore/Fonts/arial.ttf` (gitignored; the HUD needs it).
+- **HDRI environment**: an equirectangular `.exr` (via tinyexr) or `.hdr` (via stb) drives
+  the skybox + IBL. Default path `./SKYBOX/ballroom_4k.exr` (set in `Application.cpp` where
+  `IBL` is constructed). Missing → procedural-sky fallback, logs the expected path. EXR
+  decoding uses the vendored **zlib** (now compiled into the project).
 - Build/run: `./build.ps1 -Run` (or `-Rebuild`), or VS → **Debug|x64** → F5, or VS Code **Ctrl+Shift+B**.
 - Assets (Shader/, Images/, Fonts/, Models/) + vcpkg DLLs are copied next to the exe on
   build, so double-click works. From a terminal the CWD must contain those folders
@@ -29,7 +35,10 @@ Entry: `main.cpp` → `Application` (owns window, scene, render loop). Modules:
 - `Geometry` — procedural sphere (11-float layout).
 - `Light` — `DirectionalLight`/`PointLight`/`SpotLight` + `LightSet::Upload`.
 - `PbrMaterial` — metallic-roughness material (scalars + optional maps, units 3–7).
-- `IBL` — builds irradiance/prefilter/BRDF-LUT from `Shader/sky.frag`; renders skybox.
+- `IBL` — builds env cubemap from an equirectangular HDRI (`.exr` via tinyexr+zlib, or
+  `.hdr` via stb) rendered through `equirect.frag`, or a procedural sky fallback
+  (`sky.frag`); then irradiance/prefilter/BRDF-LUT; renders the skybox (`RenderBackground`,
+  intensity param). `tinyexr.cpp` compiles tinyexr against the vendored zlib.
 - `Model` — Assimp loader → `Mesh` list; `Draw` (albedo shader) / `DrawPBR` (PBR shader).
 - `Text` — FreeType glyph renderer.
 
@@ -64,9 +73,10 @@ Entry: `main.cpp` → `Application` (owns window, scene, render loop). Modules:
   (no shader/GL errors). Visual output not verified in this environment.
 
 ## Known issues / remaining tasks (see docs/ROADMAP.md)
-- No PBR texture-map assets shipped → the sphere grid uses scalar materials; maps are
-  supported in the shader but untested with real albedo/normal/metallic/roughness/AO sets.
-- IBL source is a procedural sky, not a loaded equirectangular .hdr (easy to add).
+- PBR texture maps are exercised by the wooden chair (BaseColor/Normal/Roughness/AO);
+  the metallic-map path is still untested (no metal asset).
+- IBL supports a real equirectangular `.hdr` (`Images/environment.hdr`) with a procedural
+  sky fallback when the file is absent.
 - No framebuffer-resize handling (fixed size from the initial window).
 - `Model` has no normal/metallic/roughness map import (diffuse color/texture only).
 - Legacy shaders/classes (`default.*`, `Light.*`, `Primitive`, `Texture`) remain but are

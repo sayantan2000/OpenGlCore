@@ -18,13 +18,14 @@ Application::Application()
 
 	glEnable(GL_DEPTH_TEST);
 
-	camera = std::make_unique<Camera>(fbWidth, fbHeight, glm::vec3(0.0f, 0.0f, 20.0f));
+	camera = std::make_unique<Camera>(fbWidth, fbHeight, glm::vec3(0.0f, 0.0f, 10.0f));
 
 	pbrShader = std::make_unique<Shader>("./Shader/pbr.vert", "./Shader/pbr.frag");
 	hdrShader = std::make_unique<Shader>("./Shader/hdr.vert", "./Shader/hdr.frag");
 
-	// Build IBL (irradiance, prefilter, BRDF LUT) from the procedural sky.
-	ibl = std::make_unique<IBL>();
+	// Build IBL from an equirectangular HDR environment (.exr via tinyexr, or .hdr via stb);
+	// falls back to a procedural sky if the file is missing. Copied next to the exe on build.
+	ibl = std::make_unique<IBL>("./SKYBOX/ballroom_4k.exr");
 
 	// Sphere mesh (shared by the material grid).
 	{
@@ -136,49 +137,19 @@ void Application::RenderSceneHDR()
 	glActiveTexture(GL_TEXTURE1); glBindTexture(GL_TEXTURE_CUBE_MAP, ibl->PrefilterMap());
 	glActiveTexture(GL_TEXTURE2); glBindTexture(GL_TEXTURE_2D, ibl->BrdfLUT());
 
-	// Material grid: 7x7 spheres, rows vary metallic, columns vary roughness.
-	const int N = 7;
-	const float spacing = 2.6f;
-	// Scalar material (no maps) for the grid.
-	GLuint id = pbrShader->ID;
-	glUniform1i(glGetUniformLocation(id, "u_hasAlbedoMap"), 0);
-	glUniform1i(glGetUniformLocation(id, "u_hasNormalMap"), 0);
-	glUniform1i(glGetUniformLocation(id, "u_hasMetallicMap"), 0);
-	glUniform1i(glGetUniformLocation(id, "u_hasRoughnessMap"), 0);
-	glUniform1i(glGetUniformLocation(id, "u_hasAoMap"), 0);
-	glUniform3f(glGetUniformLocation(id, "u_albedo"), 0.9f, 0.1f, 0.1f);
-	glUniform1f(glGetUniformLocation(id, "u_ao"), 1.0f);
-
-	for (int row = 0; row < N; ++row)
-	{
-		float metallic = (float)row / (float)(N - 1);
-		glUniform1f(glGetUniformLocation(id, "u_metallic"), metallic);
-		for (int col = 0; col < N; ++col)
-		{
-			float roughness = glm::clamp((float)col / (float)(N - 1), 0.05f, 1.0f);
-			glUniform1f(glGetUniformLocation(id, "u_roughness"), roughness);
-
-			glm::mat4 m = glm::translate(glm::mat4(1.0f), glm::vec3(
-				(col - (N - 1) / 2.0f) * spacing,
-				(row - (N - 1) / 2.0f) * spacing,
-				0.0f));
-			pbrShader->SetUniformMat4("model", m);
-			sphere->Draw();
-		}
-	}
-
-	// Wooden chair, centered in front of the grid, drawn with its full PBR texture set.
+	// Wooden chair (sole subject), centered at the origin, drawn with its full PBR set.
 	chairMaterial.Bind(*pbrShader);
-	glm::mat4 cm = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -4.0f, 9.0f));
-	cm = glm::scale(cm, glm::vec3(chairScale));
+	glm::mat4 cm = glm::scale(glm::mat4(1.0f), glm::vec3(chairScale));
 	cm = glm::translate(cm, -chairCenter);
 	pbrShader->SetUniformMat4("model", cm);
 	chair->DrawGeometry();
 
-	// Skybox (environment) last, filling only un-written depth.
+	// Skybox (environment) last, filling only un-written depth. Intensity is independent
+	// of the HDR tonemap exposure.
 	ibl->RenderBackground(
 		camera->GetProjectionMatrix(fov, 0.1f, 200.0f),
-		camera->GetViewMatrix());
+		camera->GetViewMatrix(),
+		skyboxIntensity);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }

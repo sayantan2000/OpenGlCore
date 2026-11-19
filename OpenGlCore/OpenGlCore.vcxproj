@@ -125,7 +125,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\vcpkg_installed\x64-windows\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\vcpkg_installed\x64-windows\include;$(ProjectDir)Libraries\source\zlib-1.3.1;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -143,7 +143,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\vcpkg_installed\x64-windows\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\vcpkg_installed\x64-windows\include;$(ProjectDir)Libraries\source\zlib-1.3.1;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -169,6 +169,17 @@
     <ClCompile Include="Primitive.cpp" />
     <ClCompile Include="shaderClass.cpp" />
     <ClCompile Include="stb.cpp" />
+    <ClCompile Include="tinyexr.cpp" />
+    <ClCompile Include="Libraries\source\zlib-1.3.1\adler32.c" />
+    <ClCompile Include="Libraries\source\zlib-1.3.1\crc32.c" />
+    <ClCompile Include="Libraries\source\zlib-1.3.1\inffast.c" />
+    <ClCompile Include="Libraries\source\zlib-1.3.1\inflate.c" />
+    <ClCompile Include="Libraries\source\zlib-1.3.1\inftrees.c" />
+    <ClCompile Include="Libraries\source\zlib-1.3.1\zutil.c" />
+    <ClCompile Include="Libraries\source\zlib-1.3.1\compress.c" />
+    <ClCompile Include="Libraries\source\zlib-1.3.1\uncompr.c" />
+    <ClCompile Include="Libraries\source\zlib-1.3.1\deflate.c" />
+    <ClCompile Include="Libraries\source\zlib-1.3.1\trees.c" />
     <ClCompile Include="Text.cpp" />
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="Time.cpp" />
@@ -217,10 +228,12 @@
       <_ImageFiles Include="$(ProjectDir)Images\**\*" />
       <_FontFiles Include="$(ProjectDir)Fonts\**\*" />
       <_ModelFiles Include="$(ProjectDir)Models\**\*" />
+      <_SkyboxFiles Include="$(ProjectDir)SKYBOX\**\*" />
     </ItemGroup>
     <Copy SourceFiles="@(_ShaderFiles)" DestinationFiles="@(_ShaderFiles->'$(OutDir)Shader\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(_ImageFiles)" DestinationFiles="@(_ImageFiles->'$(OutDir)Images\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(_ModelFiles)" DestinationFiles="@(_ModelFiles->'$(OutDir)Models\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" Condition="'@(_ModelFiles)' != ''" />
+    <Copy SourceFiles="@(_SkyboxFiles)" DestinationFiles="@(_SkyboxFiles->'$(OutDir)SKYBOX\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" Condition="'@(_SkyboxFiles)' != ''" />
     <Copy SourceFiles="@(_FontFiles)" DestinationFiles="@(_FontFiles->'$(OutDir)Fonts\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" Condition="'@(_FontFiles)' != ''" />
   </Target>
   <!-- Copy vcpkg runtime DLLs (Assimp + its dependencies) next to the executable. -->

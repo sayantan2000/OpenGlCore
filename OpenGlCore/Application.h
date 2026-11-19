@@ -55,7 +55,8 @@ private:
 
 	std::string hudText = "FPS: --";
 	float fov = 60.0f;
-	float exposure = 1.0f;
+	float exposure = 1.0f;        // HDR tonemap exposure (scene)
+	float skyboxIntensity = 1.0f; // skybox brightness, independent of exposure
 };
 
 #endif

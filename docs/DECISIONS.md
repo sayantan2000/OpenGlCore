@@ -19,9 +19,10 @@
     facade composing the subsystems; `Window` is the RAII GL-context owner. GL resources are
     held in `unique_ptr`s so they free before the context.
   - **Metallic-roughness workflow** (not specular-glossiness) — industry default, simpler.
-  - **IBL from a procedural sky**, not a loaded `.hdr` — avoids shipping/licensing an HDR
-    asset while still exercising the full irradiance/prefilter/BRDF-LUT pipeline. A `.hdr`
-    loader can be added later as an alternate source.
+  - **IBL from a procedural sky** initially, then (update 2026-11-19) an **equirectangular
+    `.hdr` loader** (`equirect.frag` + stb `loadf`) as the primary source with the procedural
+    sky as fallback. The HDRI env cubemap is reused for the skybox and all IBL products (no
+    duplicate processing). Skybox intensity is independent of HDR exposure.
   - **Normal mapping via screen-space derivatives** — avoids adding a tangent vertex
     attribute, keeping the single 11-float layout used everywhere.
   - **Lights as plain structs + `Upload`**, materials as `PbrMaterial` + `Bind` — no deep

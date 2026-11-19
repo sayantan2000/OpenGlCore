@@ -26,8 +26,10 @@
 - ✅ **PBR texture-mapped mesh**: the wooden chair (`Models/wooden_chair_ukipagtbw_high/`)
   renders with BaseColor/Normal/Roughness/AO maps (metallic=0) via `Model::DrawGeometry` +
   an external `PbrMaterial`. (Metallic-map path still unexercised — no metal asset.)
-- **IBL from a loaded equirectangular `.hdr`** (stb `loadf` + equirect→cubemap shader),
-  selectable alongside the procedural sky.
+- ✅ **IBL from a loaded equirectangular `.hdr`** (`equirect.frag` + stb `loadf`): the IBL
+  env source is the HDRI at `Images/environment.hdr` when present (procedural sky fallback
+  otherwise); the same env cubemap drives the skybox + irradiance/prefilter/BRDF. Skybox
+  intensity is independently controllable (`u_bgIntensity`). Supply the `.hdr` to use it.
 - **Framebuffer resize** handling (recreate HDR target + update camera/Text on resize).
 - **Model PBR map import** in `Model` (normal/metallic/roughness/AO, not just diffuse).
 - Remove now-unused legacy shaders/classes (`default.*`, `Light.*`, `Primitive`, `Texture`)

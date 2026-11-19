@@ -49,6 +49,8 @@ main.cpp
   (texture decode, incl. embedded + HDR-capable), all vendored under `Libraries/source`.
 - **FreeType** — text (vendored prebuilt libs + headers in `Libraries/`).
 - **Assimp** — model import (via vcpkg manifest `vcpkg.json`; restored to `vcpkg_installed/`).
+- **tinyexr** (vendored header, `tinyexr.cpp`) + **zlib** (vendored source, now compiled) —
+  OpenEXR (`.exr`) HDR environment loading.
 - **opengl32.lib** — system GL. No Win32 dependency in source (GLFW handles the monitor).
 - IBL uses a **procedural sky**, so no `.hdr`/HDR-image dependency.
 
