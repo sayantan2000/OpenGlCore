@@ -97,13 +97,14 @@ Foundation for everything else.
   `GetUniFormId` — odd casing but unambiguous; renaming is pure churn. Revisit only if a
   broader API cleanup happens.
 
-### 2.2 Extract a minimal `Mesh`/draw helper
-- **Problem**: `main` manually binds VAO/texture/shader and calls `glDrawElements` with
-  hand-maintained strides and index counts.
-- **Proposal**: A small `Mesh` that owns VAO+VBO+EBO and exposes `Draw()`; the 11-float
-  attribute layout defined in one place. Keep it thin — no scene graph.
-- **Trade-offs**: A little abstraction; reduces `main` duplication for N objects.
-- **Priority**: Medium. **Depends on**: 1.1.
+### 2.2 Extract a minimal `Mesh`/draw helper — ✅ DONE (2026-11-19)
+- **Done**: `Mesh.{h,cpp}` owns VAO+VBO+EBO (RAII members → non-copyable, movable) and
+  takes `(vertices, indices, layout)` where layout is a `std::vector<VertexAttribute>`;
+  it computes stride/offsets and exposes `Draw()` (binds its VAO + `glDrawElements`).
+  `main` now builds `pyramidMesh` (pos/color/uv/normal) and `sphereMesh` (pos) and calls
+  `.Draw()`; the manual VAO/VBO/EBO plumbing and raw `glDrawElements` calls are gone.
+- **Kept thin on purpose**: shader/texture binding stays in `main`; no scene graph. The
+  EBO is bound while the VAO is bound in the Mesh ctor so the VAO records it.
 
 ### 2.3 Delta-time-correct camera — ✅ DONE (2026-11-19)
 - **Was**: `Camera::speed` not scaled by `tick`; movement frame-rate dependent; `tick`
@@ -142,12 +143,11 @@ Foundation for everything else.
   loader over FBX/Assimp for a learning project. Defer until needed.
 - **Priority**: Low.
 
-### 3.3 Platform decoupling
-- **Problem**: `Windows.h`/`GetSystemMetrics` for monitor size; windowed-vs-fullscreen
-  hard-coded.
-- **Proposal**: Use GLFW monitor/video-mode APIs (`glfwGetVideoMode`) instead of Win32;
-  make fullscreen a flag.
-- **Priority**: Low.
+### 3.3 Platform decoupling — ✅ DONE (2026-11-19)
+- **Done**: removed `Windows.h`/`WinUser.h`; monitor size now comes from
+  `glfwGetVideoMode(glfwGetPrimaryMonitor())`. Added a `FULLSCREEN` compile-time flag
+  (windowed 1280x720 when false). This is the only Win32 coupling that existed; the code
+  is now platform-neutral at the source level (build is still a VS/MSBuild project).
 
 ---
 

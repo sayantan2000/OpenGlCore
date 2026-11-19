@@ -26,7 +26,8 @@ main.cpp ── creates/drives ──> GLFW window + GL context (GLAD)
 
 | File | Role | Notes / debt |
 |------|------|------|
-| `main.cpp` | App entry, setup, render loop, teardown | Monolithic; hard-coded layout strides; manual bind/draw. |
+| `main.cpp` | App entry, setup, render loop, teardown | Uses `Mesh` for geometry; monitor size via GLFW (`FULLSCREEN` flag). Shader/texture/uniform binding still inline. |
+| `Mesh.{h,cpp}` | Owns VAO+VBO+EBO for one drawable; `Draw()` | Phase 2.2. Takes a `VertexAttribute` layout; RAII members (non-copyable, movable). |
 | `Primitive.{h,cpp}` | CPU geometry (pyramid hard-coded array; sphere generated) | Phase 0 fixed the switch fall-through and sphere generator (now vector-based, position-only). Sphere still has no normals/UVs (fine for the light marker). Byte-size accessors renamed to `VertexBytes()`/`IndexBytes()` (Phase 2.1). |
 | `VerTexArray.{h,cpp}` | VAO + `LinkAttriBute` | RAII (Phase 1.1): non-copyable/movable; `LinkAttriBute` takes `VerTexBuffer&`. |
 | `VerTexBuffer.{h,cpp}` | VBO | RAII (Phase 1.1): destructor frees handle; non-copyable, movable. |

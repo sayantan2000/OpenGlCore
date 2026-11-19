@@ -1,5 +1,3 @@
-#include<Windows.h>
-#include <WinUser.h>
 #include<iostream>
 #include<glad/glad.h>
 #include<GLFW/glfw3.h>
@@ -7,15 +5,18 @@
 #include"VerTexArray.h"
 #include"VerTexBuffer.h"
 #include"ElementBuffer.h"
-#include "Texture.h";
-#include "Camera.h";
-#include"Primitive.h";
-#include "Time.h";
+#include"Mesh.h"
+#include "Texture.h"
+#include "Camera.h"
+#include"Primitive.h"
+#include "Time.h"
 
 constexpr float const FOV = 60.00f;
+// Set to false for a windowed 1280x720; true uses the primary monitor's full resolution.
+constexpr bool FULLSCREEN = true;
 
 float oldTimeSinceStart = 0;
-int HEIGHT = 1080, WIDTH = 1920;
+int HEIGHT = 720, WIDTH = 1280;
 
 int main()
 {
@@ -23,8 +24,6 @@ int main()
 	Primitive sun(PrimitiveType::sphere);
 
 	//PrimitIve p = PrimitIve::GetPrimiTive(PrimitIve::Sphere);
-	HEIGHT = GetSystemMetrics(SM_CYSCREEN);
-	WIDTH = GetSystemMetrics(SM_CXSCREEN);
 	float currentFrame = glfwGetTime();
 	float lastFrame = currentFrame;
 
@@ -44,8 +43,23 @@ int main()
 	// So that means we only have the modern functions
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-	// Create a GLFWwindow object of 800 by 800 pixels, naming it "YoutubeOpenGL"
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "OpenGLCore", glfwGetPrimaryMonitor(), nullptr);
+	// Determine window size + target monitor via GLFW (no Win32 dependency).
+	// Fullscreen: use the primary monitor's current video mode resolution.
+	GLFWmonitor* targetMonitor = nullptr;
+	if (FULLSCREEN)
+	{
+		GLFWmonitor* primary = glfwGetPrimaryMonitor();
+		const GLFWvidmode* mode = glfwGetVideoMode(primary);
+		if (mode != nullptr)
+		{
+			WIDTH = mode->width;
+			HEIGHT = mode->height;
+		}
+		targetMonitor = primary; // passing a monitor makes the window fullscreen
+	}
+
+	// Create the GLFW window (fullscreen on the primary monitor, or windowed).
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "OpenGLCore", targetMonitor, nullptr);
 	// Error check if the window fails to create
 	if (window == NULL)
 	{
@@ -74,39 +88,13 @@ int main()
 
 
 
-	// Generates Vertex Array Object and binds it
-	VerTexArray VAO1;
-	VAO1.Bind();
-
-	// Generates Vertex Buffer Object and links it to vertices
-	VerTexBuffer VBO1(p.vertices.data(), p.VertexBytes());
-	// Generates Element Buffer Object and links it to indices
-	ElementBuffer EBO1(p.Indices.data(), p.IndexBytes());
-
-	// Links VBO to VAO
-	VAO1.LinkAttriBute(VBO1, 0, 3, GL_FLOAT, 11 * sizeof(float), (void*)0);
-	VAO1.LinkAttriBute(VBO1, 1, 3, GL_FLOAT, 11 * sizeof(float), (void*)(3 * sizeof(float)));
-	VAO1.LinkAttriBute(VBO1, 2, 2, GL_FLOAT, 11 * sizeof(float), (void*)(6 * sizeof(float)));
-	VAO1.LinkAttriBute(VBO1, 3, 3, GL_FLOAT, 11 * sizeof(float), (void*)(8 * sizeof(float)));
-	// Unbind all to prevent accidentally modifying them
-	VAO1.Unbind();
-	VBO1.Unbind();
-	EBO1.Unbind();
+	// Pyramid mesh: layout is pos(3) color(3) uv(2) normal(3) = 11 floats/vertex.
+	Mesh pyramidMesh(p.vertices, p.Indices,
+		{ {3, GL_FLOAT}, {3, GL_FLOAT}, {2, GL_FLOAT}, {3, GL_FLOAT} });
 
 	Shader lightShader("./Shader/Light.vert", "./Shader/Light.frag");
-	// Generates Vertex Array Object and binds it
-	VerTexArray lightVAO;
-	lightVAO.Bind();
-	// Generates Vertex Buffer Object and links it to vertices
-	VerTexBuffer lightVBO(sun.vertices.data(), sun.VertexBytes());
-	// Generates Element Buffer Object and links it to indices
-	ElementBuffer lightEBO(sun.Indices.data(), sun.IndexBytes());
-	// Links VBO attributes such as coordinates and colors to VAO
-	lightVAO.LinkAttriBute(lightVBO, 0, 3, GL_FLOAT, 3 * sizeof(float), (void*)0);
-	// Unbind all to prevent accidentally modifying them
-	lightVAO.Unbind();
-	lightVBO.Unbind();
-	lightEBO.Unbind();
+	// Light-source sphere mesh: position-only (3 floats/vertex).
+	Mesh sphereMesh(sun.vertices, sun.Indices, { {3, GL_FLOAT} });
 
 	glm::vec3 lightPos = glm::vec3(2.5f, 2.00f, 0.00f);
 	glm::mat4 lightModel = glm::mat4(1.0f);
@@ -187,14 +175,12 @@ int main()
 		// Clean the back buffer and assign the new color to it
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		lightShader.Activate();
-		// Export the camMatrix to the Vertex Shader of the light cube
+		// Export the camMatrix to the Vertex Shader of the light source
 		camera.Matrix(lightShader, "camMatrix");
-		// Bind the VAO so OpenGL knows to use it
-		lightVAO.Bind();
 		lightShader.SetUniformMat4("model", lightModel);
 		lightShader.SetUniformValueF("_Time", (float)glfwGetTime());
-		// Draw primitives, number of indices, datatype of indices, index of indices
-		glDrawElements(GL_TRIANGLES, sun.Indices.size(), GL_UNSIGNED_INT, 0);
+		// Mesh::Draw binds its own VAO and issues the indexed draw.
+		sphereMesh.Draw();
 
 
 		// Tell OpenGL which Shader Program we want to use
@@ -206,12 +192,10 @@ int main()
 		// view/projection (previously uploaded after glDrawElements -> one frame stale).
 		camera.Matrix(shaderProgram, "camMatrix");
 
-		// Bind the VAO so OpenGL knows to use it
-		VAO1.Bind();
 		texture.Bind();
 		shaderProgram.SetUniformMat4("model", model);
-		// Draw primitives, number of indices, datatype of indices, index of indices
-		glDrawElements(GL_TRIANGLES, p.Indices.size(), GL_UNSIGNED_INT, 0);
+		// Mesh::Draw binds its own VAO and issues the indexed draw.
+		pyramidMesh.Draw();
 
 
 		// Swap the back buffer with the front buffer
