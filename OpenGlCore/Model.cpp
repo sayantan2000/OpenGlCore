@@ -1,12 +1,15 @@
 #include "Model.h"
 #include <stdexcept>
 #include <iostream>
+#include <limits>
+#include <algorithm>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
-// Builds one project Mesh (11-float layout) from an Assimp mesh.
-static Mesh BuildMesh(const aiMesh* mesh)
+// Builds one project Mesh (11-float layout) from an Assimp mesh, expanding the
+// running axis-aligned bounds (min/max) with this mesh's positions.
+static Mesh BuildMesh(const aiMesh* mesh, glm::vec3& boundsMin, glm::vec3& boundsMax)
 {
 	std::vector<GLfloat> vertices;
 	std::vector<GLuint> indices;
@@ -18,6 +21,13 @@ static Mesh BuildMesh(const aiMesh* mesh)
 		vertices.push_back(mesh->mVertices[i].x);
 		vertices.push_back(mesh->mVertices[i].y);
 		vertices.push_back(mesh->mVertices[i].z);
+
+		boundsMin.x = std::min(boundsMin.x, mesh->mVertices[i].x);
+		boundsMin.y = std::min(boundsMin.y, mesh->mVertices[i].y);
+		boundsMin.z = std::min(boundsMin.z, mesh->mVertices[i].z);
+		boundsMax.x = std::max(boundsMax.x, mesh->mVertices[i].x);
+		boundsMax.y = std::max(boundsMax.y, mesh->mVertices[i].y);
+		boundsMax.z = std::max(boundsMax.z, mesh->mVertices[i].z);
 		// color (no per-vertex color from most models: use a neutral light grey)
 		vertices.push_back(0.8f);
 		vertices.push_back(0.8f);
@@ -73,10 +83,27 @@ Model::Model(const std::string& path)
 		throw std::runtime_error(msg);
 	}
 
+	boundsMin = glm::vec3(std::numeric_limits<float>::max());
+	boundsMax = glm::vec3(std::numeric_limits<float>::lowest());
+
 	// Flatten every mesh referenced in the scene (node hierarchy transforms are not
 	// applied here; sufficient for single-mesh models like Cube.fbx).
 	for (unsigned int i = 0; i < scene->mNumMeshes; i++)
-		meshes.push_back(BuildMesh(scene->mMeshes[i]));
+		meshes.push_back(BuildMesh(scene->mMeshes[i], boundsMin, boundsMax));
+
+	if (meshes.empty())
+	{
+		boundsMin = glm::vec3(0.0f);
+		boundsMax = glm::vec3(0.0f);
+	}
+}
+
+float Model::ScaleToFit(float targetSize) const
+{
+	glm::vec3 s = Size();
+	float largest = std::max(s.x, std::max(s.y, s.z));
+	if (largest <= 0.0f) return 1.0f;
+	return targetSize / largest;
 }
 
 void Model::Draw()

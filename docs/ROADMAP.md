@@ -151,9 +151,12 @@ Foundation for everything else.
   draws all sub-meshes. `main` loads `./Models/Cube.fbx` and draws it beside the pyramid.
 - **Build wiring**: vcxproj adds the vcpkg include/lib dirs per config and links
   `assimp-vc145-mt[d].lib`; a post-build target copies the Assimp DLLs next to the exe.
+- **Rendering**: models draw with a dedicated albedo shader (`default.vert` +
+  `albedo.frag`) — lit solid base color via an `albedo` uniform, no texture. `Model`
+  computes an AABB (`Size()`/`Center()`/`ScaleToFit(target)`); `main` scales the cube to
+  ~2 units and recenters it, so native FBX units don't matter.
 - **Caveats**: node-hierarchy transforms are not applied (fine for single-mesh models);
-  FBX scale is often cm, so `main` applies a 0.01 scale when drawing (adjust per model).
-  No material/texture import yet — loaded meshes reuse the bound brick texture.
+  no material/texture import (uses the uniform albedo color); no skinning/animation.
 
 ### 3.3 Platform decoupling — ✅ DONE (2026-11-19)
 - **Done**: removed `Windows.h`/`WinUser.h`; monitor size now comes from

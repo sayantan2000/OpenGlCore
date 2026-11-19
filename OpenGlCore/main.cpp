@@ -118,6 +118,15 @@ int main()
 	lightShader.SetUniformValueVec4("LightColor", LightColor);
 	lightShader.SetUniformValueVec3("Scale", glm::vec3(0.2f));
 
+	// Shader for loaded models: lit, solid albedo base color (no texture).
+	Shader modelShader("./Shader/default.vert", "./Shader/albedo.frag");
+	modelShader.Activate();
+	modelShader.SetUniformValueVec3("lightPos", lightPos);
+	modelShader.SetUniformValueVec4("lightcolor", LightColor);
+	modelShader.SetUniformValueF("scale", 1.0f);
+	glm::vec3 cubeAlbedo(0.15f, 0.55f, 0.85f); // base color (teal-blue)
+	modelShader.SetUniformValueVec3("albedo", cubeAlbedo);
+
 
 
 
@@ -127,9 +136,11 @@ int main()
 	Text hud("./Fonts/arial.ttf", 48, WIDTH, HEIGHT);
 	std::string hudText = "FPS: --";
 
-	// Load an FBX model via Assimp. FBX units are often centimeters, so a small scale
-	// is applied when drawing; adjust per model.
+	// Load an FBX model via Assimp. Compute a uniform scale that fits it to ~2 units
+	// (meters) regardless of the file's native units, and its center for positioning.
 	Model cubeModel("./Models/Cube.fbx");
+	float cubeFitScale = cubeModel.ScaleToFit(2.0f);
+	glm::vec3 cubeCenter = cubeModel.Center();
 
 	float rotation = 0.0f;
 	double prevTime = glfwGetTime();
@@ -145,32 +156,25 @@ int main()
 	while (!glfwWindowShouldClose(window))
 	{
 		crntTime = glfwGetTime();
-		timeDiff = crntTime - prevTime;
+		// Per-frame delta time (used for frame-rate-independent motion).
+		Time::_DeltaTime = (float)(crntTime - lastFrame);
+		lastFrame = crntTime;
 		counter++;
 
-		if (timeDiff >= 1.0 / 1000)
+		// Update the FPS counter (title + HUD) ~twice per second over real elapsed time.
+		timeDiff = crntTime - prevTime;
+		if (timeDiff >= 0.5)
 		{
-			// Creates new title
-			std::string FPS = std::to_string((1.0 / timeDiff) * counter);
-			std::string ms = std::to_string((timeDiff / counter) * 1000);
-			std::string newTitle = "OpenGlCore - " + FPS + "FPS / " + ms + "ms";
+			int fpsInt = (int)(counter / timeDiff);
+			double ms = (timeDiff / counter) * 1000.0;
+			std::string newTitle = "OpenGlCore - " + std::to_string(fpsInt) + " FPS / "
+				+ std::to_string(ms) + " ms";
 			glfwSetWindowTitle(window, newTitle.c_str());
-
-			// Update the on-screen HUD (integer FPS for readability).
-			int fpsInt = (int)((1.0 / timeDiff) * counter);
 			hudText = "FPS: " + std::to_string(fpsInt);
 
-			// Resets times and counter
-			_prevTime = crntTime;
+			prevTime = crntTime;
 			counter = 0;
-
-			// Use this if you have disabled VSync
-			//camera.Inputs(window);
 		}
-		currentFrame = glfwGetTime();
-		Time::_DeltaTime = currentFrame - lastFrame;
-
-		lastFrame = currentFrame;
 
 		// Smooth, frame-rate-independent spin. `rotation` is an accumulating angle in
 		// degrees advanced by (speed * dt); the model matrix is REBUILT from identity
@@ -211,10 +215,15 @@ int main()
 		// Mesh::Draw binds its own VAO and issues the indexed draw.
 		pyramidMesh.Draw();
 
-		// Draw the Assimp-loaded model (reuses the default shader + bound texture).
-		glm::mat4 cubeModelMat = glm::translate(glm::mat4(1.0f), glm::vec3(1.5f, 0.0f, 0.0f));
-		cubeModelMat = glm::scale(cubeModelMat, glm::vec3(0.01f)); // FBX is often in cm
-		shaderProgram.SetUniformMat4("model", cubeModelMat);
+		// Draw the Assimp-loaded model with the albedo (solid base color) shader.
+		// Scale to ~2 units and recenter on its own bounds, placed to the side.
+		modelShader.Activate();
+		modelShader.SetUniformValueVec3("CamPos", camera.Position);
+		camera.Matrix(modelShader, "camMatrix");
+		glm::mat4 cubeModelMat = glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, 1.0f, 0.0f));
+		cubeModelMat = glm::scale(cubeModelMat, glm::vec3(cubeFitScale));
+		cubeModelMat = glm::translate(cubeModelMat, -cubeCenter);
+		modelShader.SetUniformMat4("model", cubeModelMat);
 		cubeModel.Draw();
 
 		// Draw the on-screen HUD last (2D overlay, blended, depth-test disabled inside).

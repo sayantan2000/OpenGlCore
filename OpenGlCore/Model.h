@@ -3,6 +3,7 @@
 
 #include<string>
 #include<vector>
+#include<glm/glm.hpp>
 #include"Mesh.h"
 
 // Loads a 3D model via Assimp (FBX, OBJ, glTF, ...) and stores it as a set of Meshes
@@ -18,7 +19,17 @@ public:
 
 	size_t MeshCount() const { return meshes.size(); }
 
+	// Axis-aligned bounds of the loaded geometry (model space).
+	glm::vec3 BoundsMin() const { return boundsMin; }
+	glm::vec3 BoundsMax() const { return boundsMax; }
+	glm::vec3 Size() const { return boundsMax - boundsMin; }
+	glm::vec3 Center() const { return (boundsMin + boundsMax) * 0.5f; }
+	// Uniform scale factor that makes the largest dimension equal `targetSize` units.
+	float ScaleToFit(float targetSize) const;
+
 private:
 	std::vector<Mesh> meshes;
+	glm::vec3 boundsMin = glm::vec3(0.0f);
+	glm::vec3 boundsMax = glm::vec3(0.0f);
 };
 #endif
