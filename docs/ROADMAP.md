@@ -155,8 +155,14 @@ Foundation for everything else.
   `albedo.frag`) — lit solid base color via an `albedo` uniform, no texture. `Model`
   computes an AABB (`Size()`/`Center()`/`ScaleToFit(target)`); `main` scales the cube to
   ~2 units and recenters it, so native FBX units don't matter.
-- **Caveats**: node-hierarchy transforms are not applied (fine for single-mesh models);
-  no material/texture import (uses the uniform albedo color); no skinning/animation.
+- **Node hierarchy**: `Model` now walks the `aiNode` tree, accumulates each node's
+  transform and bakes it into the mesh vertices (positions + inverse-transpose for
+  normals), so multi-part FBX files are positioned correctly. Bounds are computed from the
+  transformed positions.
+- **Materials**: per sub-mesh diffuse color is imported (`AI_MATKEY_COLOR_DIFFUSE`) and
+  applied via `Draw(Shader&)` setting the `albedo` uniform per mesh (default grey if none).
+- **Still not handled**: texture/normal-map import (needs a textured test model + sampler
+  binding + shader branch), and skinning/animation (bind pose only).
 
 ### 3.3 Platform decoupling — ✅ DONE (2026-11-19)
 - **Done**: removed `Windows.h`/`WinUser.h`; monitor size now comes from

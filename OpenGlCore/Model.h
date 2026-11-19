@@ -5,6 +5,12 @@
 #include<vector>
 #include<glm/glm.hpp>
 #include"Mesh.h"
+#include"shaderClass.h"
+
+// Forward-declared Assimp types (avoid pulling assimp headers into this header).
+struct aiNode;
+struct aiScene;
+struct aiMesh;
 
 // Loads a 3D model via Assimp (FBX, OBJ, glTF, ...) and stores it as a set of Meshes
 // in this project's standard 11-float vertex layout (pos3, color3, uv2, normal3), so a
@@ -14,8 +20,10 @@ class Model
 public:
 	explicit Model(const std::string& path);
 
-	// Draws every sub-mesh. Caller binds the shader/texture and sets uniforms first.
-	void Draw();
+	// Draws every sub-mesh, setting the "albedo" uniform to each sub-mesh's imported
+	// material diffuse color. Caller activates `shader` and sets the shared uniforms
+	// (camMatrix, model, lightPos, ...) first.
+	void Draw(Shader& shader);
 
 	size_t MeshCount() const { return meshes.size(); }
 
@@ -28,8 +36,18 @@ public:
 	float ScaleToFit(float targetSize) const;
 
 private:
-	std::vector<Mesh> meshes;
+	struct SubMesh
+	{
+		Mesh mesh;
+		glm::vec3 albedo; // imported material diffuse color (default grey)
+	};
+	std::vector<SubMesh> meshes;
 	glm::vec3 boundsMin = glm::vec3(0.0f);
 	glm::vec3 boundsMax = glm::vec3(0.0f);
+
+	// Recursively walks the node hierarchy, accumulating each node's transform and
+	// baking it into the vertices of the meshes that node references.
+	void ProcessNode(const aiNode* node, const aiScene* scene, const glm::mat4& parentTransform);
+	void AddMesh(const aiMesh* mesh, const aiScene* scene, const glm::mat4& transform);
 };
 #endif

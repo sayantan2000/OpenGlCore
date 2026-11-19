@@ -224,7 +224,8 @@ int main()
 		cubeModelMat = glm::scale(cubeModelMat, glm::vec3(cubeFitScale));
 		cubeModelMat = glm::translate(cubeModelMat, -cubeCenter);
 		modelShader.SetUniformMat4("model", cubeModelMat);
-		cubeModel.Draw();
+		// Draw sets the albedo uniform per sub-mesh from each imported material color.
+		cubeModel.Draw(modelShader);
 
 		// Draw the on-screen HUD last (2D overlay, blended, depth-test disabled inside).
 		hud.RenderText(hudText, 25.0f, (float)HEIGHT - 60.0f, 0.6f, glm::vec3(0.9f, 0.9f, 0.2f));
