@@ -130,12 +130,18 @@ Foundation for everything else.
 
 ## Phase 3 — Extensibility (Low, optional / future)
 
-### 3.1 Decide freetype + zlib fate
-- **Problem**: Both vendored but unused; `Text` is an empty stub.
-- **Proposal**: Either (a) implement `Text` with freetype (glyph atlas + textured quads)
-  and remove zlib if not needed, or (b) drop the unused vendored libs to shrink the repo.
-  **Do not** wire them in silently.
-- **Priority**: Low.
+### 3.1 Text rendering with FreeType — ✅ DONE (2026-11-19)
+- **Done**: FreeType built from source (VER-2-13-3, static, optional deps disabled) and
+  vendored into `Libraries/lib/freetype.lib` (+ `freetyped.lib` for Debug) and headers
+  under `Libraries/source/{ft2build.h,freetype/}`. Linked per-config in the vcxproj.
+- `Text.{h,cpp}` is now a real renderer: rasterizes the first 128 ASCII glyphs into one
+  texture each, draws textured quads with an orthographic pixel-space projection,
+  alpha-blended with depth test disabled. `main` shows an on-screen FPS HUD.
+- Text shaders: `Shader/text.vert`, `Shader/text.frag`. Font: `./Fonts/arial.ttf`
+  (NOT committed — see note). zlib left vendored/unused (FreeType built without it).
+- **Font note**: `OpenGlCore/Fonts/*.ttf` is gitignored to avoid committing a proprietary
+  font; a local copy of Arial is used. Supply any `.ttf` as `./Fonts/arial.ttf`, or change
+  the path in `main.cpp` where `Text hud(...)` is constructed.
 
 ### 3.2 Model loading
 - **Problem**: `Model::Load` empty; `Cube.fbx` unused. FBX needs a heavy dependency.

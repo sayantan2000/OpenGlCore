@@ -1,0 +1,8 @@
+{
+  "name": "openglcore",
+  "version-string": "0.1.0",
+  "dependencies": [
+    "assimp"
+  ],
+  "builtin-baseline": "d13c536672dced4b8c671955ea7d057a1b7a1ff8"
+}

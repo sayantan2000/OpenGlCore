@@ -36,7 +36,7 @@ main.cpp ── creates/drives ──> GLFW window + GL context (GLAD)
 | `Texture.{h,cpp}` | stb image load → GL texture | **`unit` member never initialized**, yet used in `Bind()`. Internal format hard-coded `GL_RGBA`. |
 | `Camera.{h,cpp}` | View/projection + WASD/mouse | `speed` not scaled by delta-time (frame-rate dependent); `tick` param unused. |
 | `Time.{h,cpp}` | Static `_DeltaTime` etc. | Global mutable state set from `main`. |
-| `Text.{h,cpp}` | Text rendering | **Empty stub.** |
+| `Text.{h,cpp}` | FreeType text renderer (glyph textures + quads) | Phase 3.1. Owns glyph textures + quad VAO/VBO + text shader; `RenderText(...)` 2D overlay. Needs `./Fonts/*.ttf` (gitignored). |
 | `Model.{h,cpp}` | Model loading | **Empty stub** (`Load` does nothing). |
 | `Enums.h` | `PrimitiveType` | `static enum` (unscoped + `static` is odd); values unscoped (`sphere`, `pyramid`…). |
 | `glad.c`, `stb.cpp` | Third-party single-file impls | Leave as-is. |
@@ -45,8 +45,10 @@ main.cpp ── creates/drives ──> GLFW window + GL context (GLAD)
 - **GLFW** (`glfw3.lib`) — windowing/input. **GLAD** — GL function loader.
 - **GLM** — math (header-only). **stb_image** — texture loading.
 - **opengl32.lib** — system GL.
-- **freetype, zlib** — vendored, **unused** by project code today.
-- **Windows.h** — `GetSystemMetrics` for monitor size (ties project to Windows).
+- **FreeType** (`freetype.lib`/`freetyped.lib`, built from source) — text rendering (`Text`).
+- **zlib** — vendored, unused (FreeType built without it).
+- **Assimp** (via vcpkg, `vcpkg.json`) — model loading (`Model`). See RESOURCE/ROADMAP.
+- Windows.h dependency **removed** (Phase 3.3); window/monitor handled via GLFW.
 
 ## Include/link model
 - VS project adds `Libraries/source` to include path and `Libraries/lib` to lib path.

@@ -361,3 +361,10 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# vcpkg installed packages (restored from vcpkg.json)
+vcpkg_installed/
+
+# Fonts: supply your own .ttf locally (not committed to avoid redistributing
+# proprietary fonts). See CLAUDE.md. The app expects ./Fonts/arial.ttf by default.
+OpenGlCore/Fonts/*.ttf

@@ -6,6 +6,7 @@
 #include"VerTexBuffer.h"
 #include"ElementBuffer.h"
 #include"Mesh.h"
+#include"Text.h"
 #include "Texture.h"
 #include "Camera.h"
 #include"Primitive.h"
@@ -121,6 +122,10 @@ int main()
 
 	Camera camera(WIDTH, HEIGHT, glm::vec3(0.0f, .5f, 2.0f));
 
+	// On-screen text overlay (FreeType). Font is loaded from ./Fonts/arial.ttf.
+	Text hud("./Fonts/arial.ttf", 48, WIDTH, HEIGHT);
+	std::string hudText = "FPS: --";
+
 	float rotation = 0.0f;
 	double prevTime = glfwGetTime();
 	glEnable(GL_DEPTH_TEST);
@@ -145,6 +150,10 @@ int main()
 			std::string ms = std::to_string((timeDiff / counter) * 1000);
 			std::string newTitle = "OpenGlCore - " + FPS + "FPS / " + ms + "ms";
 			glfwSetWindowTitle(window, newTitle.c_str());
+
+			// Update the on-screen HUD (integer FPS for readability).
+			int fpsInt = (int)((1.0 / timeDiff) * counter);
+			hudText = "FPS: " + std::to_string(fpsInt);
 
 			// Resets times and counter
 			_prevTime = crntTime;
@@ -196,6 +205,9 @@ int main()
 		shaderProgram.SetUniformMat4("model", model);
 		// Mesh::Draw binds its own VAO and issues the indexed draw.
 		pyramidMesh.Draw();
+
+		// Draw the on-screen HUD last (2D overlay, blended, depth-test disabled inside).
+		hud.RenderText(hudText, 25.0f, (float)HEIGHT - 60.0f, 0.6f, glm::vec3(0.9f, 0.9f, 0.2f));
 
 
 		// Swap the back buffer with the front buffer
