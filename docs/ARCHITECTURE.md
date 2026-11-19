@@ -27,10 +27,10 @@ main.cpp ── creates/drives ──> GLFW window + GL context (GLAD)
 | File | Role | Notes / debt |
 |------|------|------|
 | `main.cpp` | App entry, setup, render loop, teardown | Monolithic; hard-coded layout strides; manual bind/draw. |
-| `Primitive.{h,cpp}` | CPU geometry (pyramid hard-coded array; sphere generated) | Phase 0 fixed the switch fall-through and sphere generator (now vector-based, position-only). Sphere still has no normals/UVs (fine for the light marker). `VerticesStride()`/`TriangleStride()` still return **byte sizes**, not strides (misnamed — Phase 2.1). |
+| `Primitive.{h,cpp}` | CPU geometry (pyramid hard-coded array; sphere generated) | Phase 0 fixed the switch fall-through and sphere generator (now vector-based, position-only). Sphere still has no normals/UVs (fine for the light marker). Byte-size accessors renamed to `VertexBytes()`/`IndexBytes()` (Phase 2.1). |
 | `VerTexArray.{h,cpp}` | VAO + `LinkAttriBute` | RAII (Phase 1.1): non-copyable/movable; `LinkAttriBute` takes `VerTexBuffer&`. |
 | `VerTexBuffer.{h,cpp}` | VBO | RAII (Phase 1.1): destructor frees handle; non-copyable, movable. |
-| `Triangles.{h,cpp}` | EBO (class `Triangle`) | Name implies a triangle, is an index buffer. |
+| `ElementBuffer.{h,cpp}` | EBO (class `ElementBuffer`) | Renamed from `Triangle`/`Triangles.*` (Phase 2.1). RAII like the other buffers. |
 | `Shader.{h,cpp}` (`shaderClass`) | Program build + uniforms | `type != "PROGRAM"` compares `const char*` pointers, not strings (works by luck via string literal pooling). Methods have typo names used by callers. |
 | `Texture.{h,cpp}` | stb image load → GL texture | **`unit` member never initialized**, yet used in `Bind()`. Internal format hard-coded `GL_RGBA`. |
 | `Camera.{h,cpp}` | View/projection + WASD/mouse | `speed` not scaled by delta-time (frame-rate dependent); `tick` param unused. |

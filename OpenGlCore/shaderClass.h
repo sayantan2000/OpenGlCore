@@ -37,7 +37,7 @@ public:
 	void CompileError(unsigned int shader, const char* type,const char* filename);
 	void CompileError(unsigned int shader, const char* type);
 	void SetUniformValueF(const char* UniForm, float a_data);
-	void SeUniFormValueMattrix(const char* Uniform, glm::mat4& mat);
+	void SetUniformMat4(const char* Uniform, glm::mat4& mat);
 	void SetUniformValueVec4(const char* Uniform, glm::vec4 vector);
 	void SetUniformValueVec3(const char* Uniform, glm::vec3 vector);
 

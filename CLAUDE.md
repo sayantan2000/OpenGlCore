@@ -26,9 +26,10 @@ engine yet — it is a single `main.cpp` demo backed by thin RAII-less wrapper c
   Treat as third-party; do not edit or document.
 
 ## Conventions (current, inconsistent — preserve unless refactoring)
-- Class names mix casing oddly: `VerTexArray`, `VerTexBuffer`, `Triangle` (= an EBO,
-  misleading name), `SeUniFormValueMattrix` (typos are load-bearing — callers depend on
-  the exact spelling). Do not rename without updating every call site.
+- Class names mix casing oddly: `VerTexArray`, `VerTexBuffer` (the EBO is now
+  `ElementBuffer`). Some method names keep odd casing (`LinkAttriBute`, `SetUniformValueF`)
+  — load-bearing; callers depend on the exact spelling. Do not rename without updating
+  every call site.
 - Vertex layout for lit objects is **11 floats**: pos(3) color(3) uv(2) normal(3).
 
 ## Hard rules for agents
@@ -45,7 +46,7 @@ engine yet — it is a single `main.cpp` demo backed by thin RAII-less wrapper c
   inside a scope block in `main` (before `glfwTerminate`).
 
 ## Known-broken / sharp edges (details in docs/ROADMAP.md)
-- `Triangle` means EBO; `VerticesStride()`/`TriangleStride()` return bytes (Phase 2.1).
+- `Primitive::VertexBytes()`/`IndexBytes()` return byte sizes (passed to buffer ctors).
 - Sphere is position-only (light marker); no normals/UVs if you want it lit (Phase 0.2 note).
 - `default.vert` normal matrix uses `transpose(mat3(model))` not inverse-transpose; fine
   for rotation-only, wrong under non-uniform scale (Phase 2.4).

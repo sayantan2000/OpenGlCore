@@ -76,8 +76,8 @@ public:
 	void GenerateSphere();
 	void GeneratePyramid();
 
-	int VerticesStride() const;
-	int TriangleStride() const;
+	int VertexBytes() const;
+	int IndexBytes() const;
 
 
 };

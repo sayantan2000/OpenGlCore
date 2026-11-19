@@ -72,11 +72,11 @@ void Primitive::GeneratePyramid()
 	}
 }
 
-int Primitive::VerticesStride() const
+int Primitive::VertexBytes() const
 {
 	return vertices.size() * 4;
 }
 
-int Primitive::TriangleStride() const {
+int Primitive::IndexBytes() const {
 	return Indices.size() * 4;
 }

@@ -157,7 +157,7 @@ void Shader::SetUniformValueF(const char* UniForm, float a_data)
 	glUniform1f(GetUniFormId(UniForm), a_data);
 }
 
-void Shader::SeUniFormValueMattrix(const char* Uniform, glm::mat4& mat)
+void Shader::SetUniformMat4(const char* Uniform, glm::mat4& mat)
 {
 	glUniformMatrix4fv(GetUniFormId(Uniform), 1, GL_FALSE, glm::value_ptr(mat));
 }

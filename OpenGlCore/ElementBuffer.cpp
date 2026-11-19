@@ -1,8 +1,8 @@
-#include"Triangles.h"
+#include"ElementBuffer.h"
 #include"GLUtils.h"
 
 // Constructor that generates a Elements Buffer Object and links it to indices
-Triangle::Triangle(GLuint* indices, GLsizeiptr size)
+ElementBuffer::ElementBuffer(GLuint* indices, GLsizeiptr size)
 {
 	glGenBuffers(1, &ID);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ID);
@@ -10,20 +10,20 @@ Triangle::Triangle(GLuint* indices, GLsizeiptr size)
 	glCheckError();
 }
 
-// Binds the Triangle
-void Triangle::Bind()
+// Binds the ElementBuffer
+void ElementBuffer::Bind()
 {
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ID);
 }
 
-// Unbinds the Triangle
-void Triangle::Unbind()
+// Unbinds the ElementBuffer
+void ElementBuffer::Unbind()
 {
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
-// Deletes the Triangle (idempotent)
-void Triangle::Delete()
+// Deletes the ElementBuffer (idempotent)
+void ElementBuffer::Delete()
 {
 	if (ID != 0)
 	{
@@ -32,18 +32,18 @@ void Triangle::Delete()
 	}
 }
 
-Triangle::~Triangle()
+ElementBuffer::~ElementBuffer()
 {
 	Delete();
 }
 
-Triangle::Triangle(Triangle&& other) noexcept
+ElementBuffer::ElementBuffer(ElementBuffer&& other) noexcept
 {
 	ID = other.ID;
 	other.ID = 0;
 }
 
-Triangle& Triangle::operator=(Triangle&& other) noexcept
+ElementBuffer& ElementBuffer::operator=(ElementBuffer&& other) noexcept
 {
 	if (this != &other)
 	{

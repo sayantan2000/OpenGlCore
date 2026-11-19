@@ -88,14 +88,14 @@ Foundation for everything else.
 
 ## Phase 2 — Structure & clarity (Medium)
 
-### 2.1 Fix misleading names (opt-in, breaking)
-- **Problem**: `Triangle` is an EBO; `VerticesStride()`/`TriangleStride()` return byte
-  sizes; `SeUniFormValueMattrix` and other typo method names.
-- **Proposal**: Rename to `ElementBuffer`, `VertexBytes()`/`IndexBytes()`, corrected
-  uniform setter names — **in one pass**, updating all call sites. Keep thin aliases only
-  if needed for a transition.
-- **Trade-offs**: Touches many files; purely mechanical. Do as its own commit.
-- **Priority**: Medium.
+### 2.1 Fix misleading names — ✅ DONE (2026-11-19, clean rebuild)
+- **Done**: `Triangle` class → **`ElementBuffer`** (files `Triangles.{h,cpp}` →
+  `ElementBuffer.{h,cpp}`, vcxproj + filters updated). `VerticesStride()`/`TriangleStride()`
+  → **`VertexBytes()`/`IndexBytes()`** (they return byte sizes, not strides).
+  `SeUniFormValueMattrix` → **`SetUniformMat4`**. All call sites in `main.cpp` updated.
+- **Left as-is (stylistic, not misleading)**: `LinkAttriBute`, `SetUniformValueF/Vec3/Vec4`,
+  `GetUniFormId` — odd casing but unambiguous; renaming is pure churn. Revisit only if a
+  broader API cleanup happens.
 
 ### 2.2 Extract a minimal `Mesh`/draw helper
 - **Problem**: `main` manually binds VAO/texture/shader and calls `glDrawElements` with

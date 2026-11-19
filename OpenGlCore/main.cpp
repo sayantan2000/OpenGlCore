@@ -6,7 +6,7 @@
 #include"shaderClass.h"
 #include"VerTexArray.h"
 #include"VerTexBuffer.h"
-#include"Triangles.h"
+#include"ElementBuffer.h"
 #include "Texture.h";
 #include "Camera.h";
 #include"Primitive.h";
@@ -79,9 +79,9 @@ int main()
 	VAO1.Bind();
 
 	// Generates Vertex Buffer Object and links it to vertices
-	VerTexBuffer VBO1(p.vertices.data(), p.VerticesStride());
+	VerTexBuffer VBO1(p.vertices.data(), p.VertexBytes());
 	// Generates Element Buffer Object and links it to indices
-	Triangle EBO1(p.Indices.data(), p.TriangleStride());
+	ElementBuffer EBO1(p.Indices.data(), p.IndexBytes());
 
 	// Links VBO to VAO
 	VAO1.LinkAttriBute(VBO1, 0, 3, GL_FLOAT, 11 * sizeof(float), (void*)0);
@@ -98,9 +98,9 @@ int main()
 	VerTexArray lightVAO;
 	lightVAO.Bind();
 	// Generates Vertex Buffer Object and links it to vertices
-	VerTexBuffer lightVBO(sun.vertices.data(), sun.VerticesStride());
+	VerTexBuffer lightVBO(sun.vertices.data(), sun.VertexBytes());
 	// Generates Element Buffer Object and links it to indices
-	Triangle lightEBO(sun.Indices.data(), sun.TriangleStride());
+	ElementBuffer lightEBO(sun.Indices.data(), sun.IndexBytes());
 	// Links VBO attributes such as coordinates and colors to VAO
 	lightVAO.LinkAttriBute(lightVBO, 0, 3, GL_FLOAT, 3 * sizeof(float), (void*)0);
 	// Unbind all to prevent accidentally modifying them
@@ -124,7 +124,7 @@ int main()
 	shaderProgram.SetUniformValueVec3("lightPos", lightPos);
 	shaderProgram.SetUniformValueVec4("lightcolor", LightColor);
 	lightShader.Activate();
-	lightShader.SeUniFormValueMattrix("model", lightModel);
+	lightShader.SetUniformMat4("model", lightModel);
 	lightShader.SetUniformValueVec4("LightColor", LightColor);
 	lightShader.SetUniformValueVec3("Scale", glm::vec3(0.2f));
 
@@ -191,7 +191,7 @@ int main()
 		camera.Matrix(lightShader, "camMatrix");
 		// Bind the VAO so OpenGL knows to use it
 		lightVAO.Bind();
-		lightShader.SeUniFormValueMattrix("model", lightModel);
+		lightShader.SetUniformMat4("model", lightModel);
 		lightShader.SetUniformValueF("_Time", (float)glfwGetTime());
 		// Draw primitives, number of indices, datatype of indices, index of indices
 		glDrawElements(GL_TRIANGLES, sun.Indices.size(), GL_UNSIGNED_INT, 0);
@@ -209,7 +209,7 @@ int main()
 		// Bind the VAO so OpenGL knows to use it
 		VAO1.Bind();
 		texture.Bind();
-		shaderProgram.SeUniFormValueMattrix("model", model);
+		shaderProgram.SetUniformMat4("model", model);
 		// Draw primitives, number of indices, datatype of indices, index of indices
 		glDrawElements(GL_TRIANGLES, p.Indices.size(), GL_UNSIGNED_INT, 0);
 
