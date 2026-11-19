@@ -115,14 +115,15 @@ Foundation for everything else.
   (rebuild model from identity each frame, advance angle by `20 * dt` deg) — it was
   compounding every frame and spinning violently at high FPS.
 
-### 2.4 Shader correctness
-- **Proposal**: In `Light.frag` use the declared `out vec4 FragColor` instead of
-  deprecated `gl_FragColor`; remove unused `_Time` or use it. In `default.vert` use the
-  proper normal matrix `transpose(inverse(mat3(model)))` (or pass it as a uniform) so
-  non-uniform scale is correct. Fix `Shader::CompileError` string comparison (`strcmp`,
-  not `!=` on `const char*`).
-- **Trade-offs**: None meaningful; more correct lighting under scaling.
-- **Priority**: Medium.
+### 2.4 Shader correctness — ✅ DONE (2026-11-19)
+- **Done**: `Light.frag` now writes the declared `out vec4 FragColor` instead of deprecated
+  `gl_FragColor`. `default.vert` uses `transpose(inverse(mat3(model)))` for the normal
+  matrix (correct under non-uniform scale; the old code also multiplied on the wrong side).
+  `Shader::CompileError` uses `strcmp` instead of comparing `const char*` pointers, and the
+  PROGRAM branch checks `GL_LINK_STATUS` (was `GL_COMPILE_STATUS`).
+- `_Time` uniform in `Light.frag` left in place (harmless, still set from main; a future
+  cleanup could remove it or animate the light with it).
+- **Verify**: lit pyramid should look unchanged (model is rotation-only).
 
 ---
 

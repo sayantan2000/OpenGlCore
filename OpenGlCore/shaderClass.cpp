@@ -1,5 +1,6 @@
 #include"shaderClass.h"
 #include<stdexcept>
+#include<cstring>
 
 // Reads a text file and outputs a string with everything in the text file.
 // Throws std::runtime_error with a clear message if the file cannot be opened,
@@ -109,7 +110,7 @@ void Shader::CompileError(unsigned int shader, const char* type,const char* file
 
 	GLint HasCompiled;
 	char infolog[1024];
-	if (type != "PROGRAM") {
+	if (strcmp(type, "PROGRAM") != 0) {
 		glGetShaderiv(shader, GL_COMPILE_STATUS, &HasCompiled);
 		if (HasCompiled == GL_FALSE) {
 			glGetShaderInfoLog(shader, sizeof(infolog), nullptr, infolog);
@@ -119,7 +120,7 @@ void Shader::CompileError(unsigned int shader, const char* type,const char* file
 	}
 	else
 	{
-		glGetProgramiv(shader, GL_COMPILE_STATUS, &HasCompiled);
+		glGetProgramiv(shader, GL_LINK_STATUS, &HasCompiled);
 		if (HasCompiled == GL_FALSE) {
 			glGetProgramInfoLog(shader, sizeof(infolog), nullptr, infolog);
 			std::wcout << "SHADER_COMPILATION_ERR for :" << type << "\n" << filename << std::endl;
@@ -132,7 +133,7 @@ void Shader::CompileError(unsigned int shader, const char* type)
 {
 	GLint HasCompiled;
 	char infolog[1024];
-	if (type != "PROGRAM") {
+	if (strcmp(type, "PROGRAM") != 0) {
 		glGetShaderiv(shader, GL_COMPILE_STATUS, &HasCompiled);
 		if (HasCompiled == GL_FALSE) {
 			glGetShaderInfoLog(shader, sizeof(infolog), nullptr, infolog);
@@ -142,7 +143,7 @@ void Shader::CompileError(unsigned int shader, const char* type)
 	}
 	else
 	{
-		glGetProgramiv(shader, GL_COMPILE_STATUS, &HasCompiled);
+		glGetProgramiv(shader, GL_LINK_STATUS, &HasCompiled);
 		if (HasCompiled == GL_FALSE) {
 			glGetProgramInfoLog(shader, sizeof(infolog), nullptr, infolog);
 			std::wcout << "SHADER_COMPILATION_ERR for :" << type << "\n"  << std::endl;
