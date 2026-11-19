@@ -37,7 +37,7 @@ main.cpp ── creates/drives ──> GLFW window + GL context (GLAD)
 | `Camera.{h,cpp}` | View/projection + WASD/mouse | `speed` not scaled by delta-time (frame-rate dependent); `tick` param unused. |
 | `Time.{h,cpp}` | Static `_DeltaTime` etc. | Global mutable state set from `main`. |
 | `Text.{h,cpp}` | FreeType text renderer (glyph textures + quads) | Phase 3.1. Owns glyph textures + quad VAO/VBO + text shader; `RenderText(...)` 2D overlay. Needs `./Fonts/*.ttf` (gitignored). |
-| `Model.{h,cpp}` | Model loading | **Empty stub** (`Load` does nothing). |
+| `Model.{h,cpp}` | Assimp model loader → `Mesh` list | Phase 3.2. Loads FBX/OBJ/glTF into the 11-float layout; `Draw()` draws all sub-meshes. Needs vcpkg-restored Assimp. |
 | `Enums.h` | `PrimitiveType` | `static enum` (unscoped + `static` is odd); values unscoped (`sphere`, `pyramid`…). |
 | `glad.c`, `stb.cpp` | Third-party single-file impls | Leave as-is. |
 

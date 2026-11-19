@@ -7,6 +7,7 @@
 #include"ElementBuffer.h"
 #include"Mesh.h"
 #include"Text.h"
+#include"Model.h"
 #include "Texture.h"
 #include "Camera.h"
 #include"Primitive.h"
@@ -126,6 +127,10 @@ int main()
 	Text hud("./Fonts/arial.ttf", 48, WIDTH, HEIGHT);
 	std::string hudText = "FPS: --";
 
+	// Load an FBX model via Assimp. FBX units are often centimeters, so a small scale
+	// is applied when drawing; adjust per model.
+	Model cubeModel("./Models/Cube.fbx");
+
 	float rotation = 0.0f;
 	double prevTime = glfwGetTime();
 	glEnable(GL_DEPTH_TEST);
@@ -205,6 +210,12 @@ int main()
 		shaderProgram.SetUniformMat4("model", model);
 		// Mesh::Draw binds its own VAO and issues the indexed draw.
 		pyramidMesh.Draw();
+
+		// Draw the Assimp-loaded model (reuses the default shader + bound texture).
+		glm::mat4 cubeModelMat = glm::translate(glm::mat4(1.0f), glm::vec3(1.5f, 0.0f, 0.0f));
+		cubeModelMat = glm::scale(cubeModelMat, glm::vec3(0.01f)); // FBX is often in cm
+		shaderProgram.SetUniformMat4("model", cubeModelMat);
+		cubeModel.Draw();
 
 		// Draw the on-screen HUD last (2D overlay, blended, depth-test disabled inside).
 		hud.RenderText(hudText, 25.0f, (float)HEIGHT - 60.0f, 0.6f, glm::vec3(0.9f, 0.9f, 0.2f));

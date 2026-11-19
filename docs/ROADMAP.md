@@ -143,11 +143,17 @@ Foundation for everything else.
   font; a local copy of Arial is used. Supply any `.ttf` as `./Fonts/arial.ttf`, or change
   the path in `main.cpp` where `Text hud(...)` is constructed.
 
-### 3.2 Model loading
-- **Problem**: `Model::Load` empty; `Cube.fbx` unused. FBX needs a heavy dependency.
-- **Proposal**: If model loading is a goal, prefer a light format (OBJ/glTF) + a small
-  loader over FBX/Assimp for a learning project. Defer until needed.
-- **Priority**: Low.
+### 3.2 Model loading with Assimp — ✅ DONE (2026-11-19)
+- **Done**: Assimp added via vcpkg manifest (`vcpkg.json`, dynamic). `Model.{h,cpp}` loads
+  a file (FBX/OBJ/glTF) with `Triangulate | GenSmoothNormals | FlipUVs`, flattens each
+  Assimp mesh into this project's 11-float layout (pos/color/uv/normal) and stores them as
+  `Mesh` objects, so a model draws with the existing `default.*` shaders. `Model::Draw()`
+  draws all sub-meshes. `main` loads `./Models/Cube.fbx` and draws it beside the pyramid.
+- **Build wiring**: vcxproj adds the vcpkg include/lib dirs per config and links
+  `assimp-vc145-mt[d].lib`; a post-build target copies the Assimp DLLs next to the exe.
+- **Caveats**: node-hierarchy transforms are not applied (fine for single-mesh models);
+  FBX scale is often cm, so `main` applies a 0.01 scale when drawing (adjust per model).
+  No material/texture import yet — loaded meshes reuse the bound brick texture.
 
 ### 3.3 Platform decoupling — ✅ DONE (2026-11-19)
 - **Done**: removed `Windows.h`/`WinUser.h`; monitor size now comes from

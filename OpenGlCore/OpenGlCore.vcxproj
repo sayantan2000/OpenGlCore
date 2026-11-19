@@ -125,11 +125,13 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\vcpkg_installed\x64-windows\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;freetyped.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\vcpkg_installed\x64-windows\debug\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;freetyped.lib;assimp-vc145-mtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -141,13 +143,15 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\vcpkg_installed\x64-windows\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;freetype.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\vcpkg_installed\x64-windows\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;freetype.lib;assimp-vc145-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -200,9 +204,22 @@
       <_ShaderFiles Include="$(ProjectDir)Shader\**\*" />
       <_ImageFiles Include="$(ProjectDir)Images\**\*" />
       <_FontFiles Include="$(ProjectDir)Fonts\**\*" />
+      <_ModelFiles Include="$(ProjectDir)Models\**\*" />
     </ItemGroup>
     <Copy SourceFiles="@(_ShaderFiles)" DestinationFiles="@(_ShaderFiles->'$(OutDir)Shader\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(_ImageFiles)" DestinationFiles="@(_ImageFiles->'$(OutDir)Images\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_ModelFiles)" DestinationFiles="@(_ModelFiles->'$(OutDir)Models\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" Condition="'@(_ModelFiles)' != ''" />
     <Copy SourceFiles="@(_FontFiles)" DestinationFiles="@(_FontFiles->'$(OutDir)Fonts\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" Condition="'@(_FontFiles)' != ''" />
+  </Target>
+  <!-- Copy vcpkg runtime DLLs (Assimp + its dependencies) next to the executable. -->
+  <Target Name="CopyVcpkgDlls" AfterTargets="Build" Condition="'$(Platform)'=='x64'">
+    <PropertyGroup>
+      <_VcpkgBin Condition="'$(Configuration)'=='Debug'">$(ProjectDir)..\vcpkg_installed\x64-windows\debug\bin</_VcpkgBin>
+      <_VcpkgBin Condition="'$(Configuration)'=='Release'">$(ProjectDir)..\vcpkg_installed\x64-windows\bin</_VcpkgBin>
+    </PropertyGroup>
+    <ItemGroup>
+      <_VcpkgDlls Include="$(_VcpkgBin)\*.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_VcpkgDlls)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" Condition="'@(_VcpkgDlls)' != ''" />
   </Target>
 </Project>

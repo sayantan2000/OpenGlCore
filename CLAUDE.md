@@ -10,13 +10,18 @@ sphere, with a fly-through camera and an FPS counter in the title bar. It is **n
 engine yet — it is a single `main.cpp` demo backed by thin RAII-less wrapper classes.
 
 ## Build & run
-- Open `OpenGlCore.sln` in Visual Studio 2022, build **Debug|x64** (or Release), run.
-- Include path: `OpenGlCore/Libraries/source`; lib path: `OpenGlCore/Libraries/lib`.
-- Links `glfw3.lib` + `opengl32.lib`. GLAD (`glad.c`) and stb (`stb.cpp`) are compiled in.
-- **Working directory matters**: shaders/textures are loaded via relative paths
-  (`./Shader/...`, `./Images/...`). Run with the project dir as CWD or paths will fail.
-- `.vscode/tasks.json` is a stale auto-generated single-file clang task — **ignore it**;
-  it does not build the project. MSBuild/VS is the real build.
+- **Prerequisite (once)**: restore Assimp via vcpkg from the repo root — the VS-bundled
+  vcpkg works: `& "C:\Program Files\Microsoft Visual Studio\18\Community\VC\vcpkg\vcpkg.exe" install --triplet x64-windows`. This populates `vcpkg_installed/` (gitignored). FreeType is already vendored (prebuilt libs + headers in `Libraries/`), so no step needed for it.
+- **Font (once)**: put a `.ttf` at `OpenGlCore/Fonts/arial.ttf` (gitignored; the HUD needs
+  it). Any TrueType font works; change the path in `main.cpp` (`Text hud(...)`) to use another.
+- Build: `./build.ps1` (or `-Run`, `-Rebuild`), or open `OpenGlCore.sln` in VS → **Debug|x64**
+  → F5. VS Code: **Ctrl+Shift+B**.
+- Include path: `Libraries/source` + the vcpkg include dir; lib path: `Libraries/lib` +
+  vcpkg lib dir. Links glfw3, opengl32, freetype, assimp. GLAD/stb compiled in.
+- **Assets are copied next to the exe on build** (Shader/, Images/, Fonts/, Models/, and the
+  vcpkg DLLs), so double-clicking the exe works. When run from a terminal, the CWD must be
+  the folder containing those asset folders (`build.ps1 -Run` handles it).
+- `.vscode/tasks.json` now builds via `build.ps1` (the old stale clang task was replaced).
 
 ## Layout
 - `OpenGlCore/*.cpp,*.h` — the actual project source (see `docs/ARCHITECTURE.md`).
