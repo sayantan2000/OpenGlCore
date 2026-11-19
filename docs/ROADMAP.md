@@ -1,11 +1,41 @@
 # Refactoring Roadmap
 
-> **Status: PROPOSED — not approved.** No source refactoring has been performed. Execute
-> items only after the maintainer approves them. Order respects dependencies. Each item
-> lists: Problem → Why → Proposal → Trade-offs → Priority.
->
-> Priorities: **Critical** (broken/incorrect behavior) · **High** (safety/architecture
-> foundations) · **Medium** (quality/extensibility) · **Low** (polish).
+> Phases 0–3 (refactor foundations) and the **PBR renderer** (Phase 4) are **DONE**.
+> Remaining work is listed under "Phase 5 — Remaining / future" at the bottom.
+
+---
+
+## Phase 4 — PBR + IBL + HDR renderer — ✅ DONE (2026-11-19, Debug|x64 builds; runtime smoke test clean)
+- **main.cpp refactor**: reduced to an entry point; all setup/loop/teardown moved into
+  `Application`, with `Window` owning GLFW/GLAD/context. GL objects owned via `unique_ptr`
+  so they free before the context.
+- **PBR** (`pbr.vert`/`pbr.frag`): Cook-Torrance metallic-roughness — GGX NDF, Smith
+  geometry, Schlick Fresnel, `F0=mix(0.04,albedo,metallic)`, energy-conserving `kD`.
+  Supports albedo/normal/metallic/roughness/AO maps (units 3–7; normal mapping via
+  screen-space derivatives). Scene demonstrates it with a 7×7 metallic/roughness grid.
+- **Lights** (`Light.{h,cpp}`): directional + point (inverse-square) + spot (inner/outer
+  cone), multiple simultaneous (`MAX_POINT_LIGHTS=8`, `MAX_SPOT_LIGHTS=4`).
+- **IBL** (`IBL.{h,cpp}` + `sky/irradiance/prefilter/brdf/cubemap/background` shaders):
+  procedural HDR sky → env cubemap → irradiance + prefiltered specular + BRDF LUT, sampled
+  in `pbr.frag`; skybox background.
+- **HDR** (`hdr.vert`/`hdr.frag`): scene → `RGBA16F` FBO → ACES tonemap + gamma.
+- **Materials** (`PbrMaterial.{h,cpp}`): scalar + optional maps.
+- See `docs/RENDERING_PIPELINE.md` for the full flow.
+
+## Phase 5 — Remaining / future (Low–Medium)
+- Ship a **PBR texture-map set** (albedo/normal/metallic/roughness/AO) + a mapped demo mesh;
+  the shader path exists but is untested with real maps.
+- **IBL from a loaded equirectangular `.hdr`** (stb `loadf` + equirect→cubemap shader),
+  selectable alongside the procedural sky.
+- **Framebuffer resize** handling (recreate HDR target + update camera/Text on resize).
+- **Model PBR map import** in `Model` (normal/metallic/roughness/AO, not just diffuse).
+- Remove now-unused legacy shaders/classes (`default.*`, `Light.*`, `Primitive`, `Texture`)
+  once confirmed obsolete.
+- Optional: shadow mapping, MSAA/bloom, per-light debug gizmos.
+
+---
+
+## Earlier phases (0–3) — ✅ DONE — history below
 
 Guiding principle: this is a learning project. Fix correctness first, add a *small* amount
 of safety/structure, and avoid heavy engine abstractions that obscure the GL learning.

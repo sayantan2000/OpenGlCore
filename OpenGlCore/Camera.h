@@ -36,6 +36,9 @@ public:
 
 	// Updates the camera matrix to the Vertex Shader
 	void updateMatrix(float FOVdeg, float nearPlane, float farPlane);
+	// Separate view / projection (used by passes that need them split, e.g. the skybox).
+	glm::mat4 GetViewMatrix() const;
+	glm::mat4 GetProjectionMatrix(float FOVdeg, float nearPlane, float farPlane) const;
 	// Exports the camera matrix to a shader
 	void Matrix(Shader& shader, const char* uniform);
 	// Handles camera inputs

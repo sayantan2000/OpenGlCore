@@ -1,64 +1,59 @@
 # Architecture
 
-> Describes the **actual current implementation**. Proposed changes live in
+> Describes the **actual current implementation**. Proposed/remaining work is in
 > `docs/ROADMAP.md`.
 
 ## High-level shape
-There is no engine abstraction. `main.cpp` is the application: it owns setup, the render
-loop, and teardown. Everything else is a **thin wrapper** over one or two GL objects, or
-a utility/stub. All orchestration (binding, uniform upload, draw order) is hand-written
-in `main()`.
+`main.cpp` is a minimal entry point that constructs an `Application` and calls `Run()`.
+`Application` owns the window, render targets, scene and main loop, and wires together the
+PBR + IBL + HDR pipeline. Everything else is a focused module: RAII GL-resource wrappers,
+lighting, materials, geometry, IBL, model loading, and text. GL-owning members live in
+`std::unique_ptr`s inside `Application` so they are destroyed **before** the `Window`
+(the GL context).
 
 ```
-main.cpp ── creates/drives ──> GLFW window + GL context (GLAD)
-   │
-   ├─ Primitive        geometry source (CPU vertex/index data)
-   ├─ VerTexBuffer     VBO wrapper
-   ├─ Triangle         EBO wrapper (misnamed: it is an Element Buffer Object)
-   ├─ VerTexArray      VAO wrapper + attribute linking
-   ├─ Shader           program: compile/link/activate/uniforms
-   ├─ Texture          2D texture load (stb) + bind
-   ├─ Camera           view/projection matrix + input
-   └─ Time             static delta-time holder
+main.cpp
+  └─ Application ── owns ──> Window (GLFW/GLAD/context)
+        ├─ Camera                 view/projection + input
+        ├─ Shader (pbr, hdr)      program wrappers
+        ├─ IBL                    irradiance + prefilter + BRDF LUT + skybox
+        ├─ Mesh (sphere)          VAO+VBO+EBO
+        ├─ Model (Cube.fbx)       Assimp -> Mesh list (+ materials/textures)
+        ├─ Text (HUD)             FreeType glyph renderer
+        ├─ LightSet               directional + point[] + spot[]
+        └─ HDR framebuffer        RGBA16F color + depth RBO
 ```
 
 ## Module reference
 
-| File | Role | Notes / debt |
+| File | Role | Notes |
 |------|------|------|
-| `main.cpp` | App entry, setup, render loop, teardown | Uses `Mesh` for geometry; monitor size via GLFW (`FULLSCREEN` flag). Shader/texture/uniform binding still inline. |
-| `Mesh.{h,cpp}` | Owns VAO+VBO+EBO for one drawable; `Draw()` | Phase 2.2. Takes a `VertexAttribute` layout; RAII members (non-copyable, movable). |
-| `Primitive.{h,cpp}` | CPU geometry (pyramid hard-coded array; sphere generated) | Phase 0 fixed the switch fall-through and sphere generator (now vector-based, position-only). Sphere still has no normals/UVs (fine for the light marker). Byte-size accessors renamed to `VertexBytes()`/`IndexBytes()` (Phase 2.1). |
-| `VerTexArray.{h,cpp}` | VAO + `LinkAttriBute` | RAII (Phase 1.1): non-copyable/movable; `LinkAttriBute` takes `VerTexBuffer&`. |
-| `VerTexBuffer.{h,cpp}` | VBO | RAII (Phase 1.1): destructor frees handle; non-copyable, movable. |
-| `ElementBuffer.{h,cpp}` | EBO (class `ElementBuffer`) | Renamed from `Triangle`/`Triangles.*` (Phase 2.1). RAII like the other buffers. |
-| `Shader.{h,cpp}` (`shaderClass`) | Program build + uniforms | `type != "PROGRAM"` compares `const char*` pointers, not strings (works by luck via string literal pooling). Methods have typo names used by callers. |
-| `Texture.{h,cpp}` | stb image load → GL texture | **`unit` member never initialized**, yet used in `Bind()`. Internal format hard-coded `GL_RGBA`. |
-| `Camera.{h,cpp}` | View/projection + WASD/mouse | `speed` not scaled by delta-time (frame-rate dependent); `tick` param unused. |
-| `Time.{h,cpp}` | Static `_DeltaTime` etc. | Global mutable state set from `main`. |
-| `Text.{h,cpp}` | FreeType text renderer (glyph textures + quads) | Phase 3.1. Owns glyph textures + quad VAO/VBO + text shader; `RenderText(...)` 2D overlay. Needs `./Fonts/*.ttf` (gitignored). |
-| `Model.{h,cpp}` | Assimp model loader → `Mesh` list | Phase 3.2. Loads FBX/OBJ/glTF into the 11-float layout; `Draw()` draws all sub-meshes. Needs vcpkg-restored Assimp. |
-| `Enums.h` | `PrimitiveType` | `static enum` (unscoped + `static` is odd); values unscoped (`sphere`, `pyramid`…). |
+| `main.cpp` | Entry point | try/catch around `Application`. |
+| `Application.{h,cpp}` | Scene, HDR target, render + tonemap passes, loop | The pipeline wiring. GL members via `unique_ptr`. |
+| `Window.{h,cpp}` | GLFW init, window, context, GLAD (RAII) | `FULLSCREEN` constant in `Application.cpp`. |
+| `Camera.{h,cpp}` | View/projection + WASD/mouse, delta-time scaled | Adds `GetViewMatrix`/`GetProjectionMatrix` for the skybox pass. |
+| `Shader.{h,cpp}` (`shaderClass`) | Program build + uniforms (RAII) | Logs GLSL compile/link errors. |
+| `Mesh.{h,cpp}` | VAO+VBO+EBO for one drawable; `Draw()` | 11-float layout via `VertexAttribute`. |
+| `VerTexArray/VerTexBuffer/ElementBuffer` | RAII VAO/VBO/EBO | non-copyable, movable. |
+| `Geometry.{h,cpp}` | Procedural UV sphere (11-float) | Used for the material grid. |
+| `Light.{h,cpp}` | Light structs + `LightSet::Upload(shader)` | `MAX_POINT_LIGHTS=8`, `MAX_SPOT_LIGHTS=4`. |
+| `PbrMaterial.{h,cpp}` | Metallic-roughness material | Scalars + optional maps (units 3–7). |
+| `IBL.{h,cpp}` | Builds irradiance/prefilter/BRDF-LUT from `sky.frag`; skybox | Owns cubemaps/LUT/cube VAO; frees in dtor. |
+| `Model.{h,cpp}` | Assimp loader → `Mesh` list | Node transforms baked; material color + diffuse texture; `Draw` (albedo) / `DrawPBR`. |
+| `Text.{h,cpp}` | FreeType glyph renderer | 2D overlay. |
+| `Texture.{h,cpp}`, `Primitive.{h,cpp}` | Legacy (stb texture, pyramid/sphere data) | Not used by the PBR scene; kept for now. |
 | `glad.c`, `stb.cpp` | Third-party single-file impls | Leave as-is. |
 
 ## Dependencies
-- **GLFW** (`glfw3.lib`) — windowing/input. **GLAD** — GL function loader.
-- **GLM** — math (header-only). **stb_image** — texture loading.
-- **opengl32.lib** — system GL.
-- **FreeType** (`freetype.lib`/`freetyped.lib`, built from source) — text rendering (`Text`).
-- **zlib** — vendored, unused (FreeType built without it).
-- **Assimp** (via vcpkg, `vcpkg.json`) — model loading (`Model`). See RESOURCE/ROADMAP.
-- Windows.h dependency **removed** (Phase 3.3); window/monitor handled via GLFW.
+- **GLFW** (window/input), **GLAD** (GL loader), **GLM** (math, header-only), **stb_image**
+  (texture decode, incl. embedded + HDR-capable), all vendored under `Libraries/source`.
+- **FreeType** — text (vendored prebuilt libs + headers in `Libraries/`).
+- **Assimp** — model import (via vcpkg manifest `vcpkg.json`; restored to `vcpkg_installed/`).
+- **opengl32.lib** — system GL. No Win32 dependency in source (GLFW handles the monitor).
+- IBL uses a **procedural sky**, so no `.hdr`/HDR-image dependency.
 
-## Include/link model
-- VS project adds `Libraries/source` to include path and `Libraries/lib` to lib path.
-- Headers referenced as `<glad/glad.h>`, `<GLFW/glfw3.h>`, `<glm/...>`, `<stb/stb.h>`.
-
-## Data flow (one lit object)
-1. `Primitive` fills `std::vector<GLfloat> vertices` + `std::vector<GLuint> Indices`.
-2. `VerTexBuffer` uploads vertices; `Triangle` uploads indices.
-3. `VerTexArray::LinkAttriBute` sets 4 attributes at stride `11*sizeof(float)`.
-4. Per frame: `Shader::Activate`, set uniforms, `Camera::updateMatrix` + upload,
-   `Texture::Bind`, `glDrawElements`.
-
-See `docs/RENDERING_PIPELINE.md` for the exact per-frame sequence and its ordering bug.
+## Design patterns (deliberately lightweight)
+- **RAII** for every GL resource (rule-of-five wrappers; `unique_ptr` ownership in `Application`).
+- **Facade**: `Application` is the one place the subsystems are composed.
+- **Plain data + upload**: `LightSet`/`PbrMaterial` are POD-ish structs with an upload/bind
+  method, not deep class hierarchies — avoids overengineering for a learning project.

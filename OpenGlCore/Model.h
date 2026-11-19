@@ -29,6 +29,10 @@ public:
 	// and hasTexture=0. Caller activates `shader` and sets the shared uniforms first.
 	void Draw(Shader& shader);
 
+	// Draws with the PBR shader: sets u_albedo (+ u_albedoMap on unit 3 when textured),
+	// and non-metallic defaults. Other PBR maps are disabled (basic imports have none).
+	void DrawPBR(Shader& shader);
+
 	size_t MeshCount() const { return meshes.size(); }
 
 	// Axis-aligned bounds of the loaded geometry (model space).

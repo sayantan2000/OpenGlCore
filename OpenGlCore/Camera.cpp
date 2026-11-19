@@ -24,6 +24,16 @@ void Camera::updateMatrix(float FOVdeg, float nearPlane, float farPlane)
 	cameraMatrix = projection * view;
 }
 
+glm::mat4 Camera::GetViewMatrix() const
+{
+	return glm::lookAt(Position, Position + Orientation, Up);
+}
+
+glm::mat4 Camera::GetProjectionMatrix(float FOVdeg, float nearPlane, float farPlane) const
+{
+	return glm::perspective(glm::radians(FOVdeg), (float)width / (float)height, nearPlane, farPlane);
+}
+
 void Camera::Matrix(Shader& shader, const char* uniform)
 {
 	// Exports camera matrix

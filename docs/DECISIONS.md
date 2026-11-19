@@ -11,6 +11,27 @@
   re-analyzing everything, and separates "what is" from "what should be".
 - **Status**: Accepted. Roadmap items remain **unapproved** pending maintainer review.
 
+## ADR-0002 — PBR renderer architecture (2026-11-19)
+- **Context**: Add a complete metallic-roughness PBR pipeline with IBL and HDR, and
+  de-clutter `main.cpp`.
+- **Decisions**:
+  - **`main.cpp` → `Application` + `Window`**: entry point is minimal; `Application` is a
+    facade composing the subsystems; `Window` is the RAII GL-context owner. GL resources are
+    held in `unique_ptr`s so they free before the context.
+  - **Metallic-roughness workflow** (not specular-glossiness) — industry default, simpler.
+  - **IBL from a procedural sky**, not a loaded `.hdr` — avoids shipping/licensing an HDR
+    asset while still exercising the full irradiance/prefilter/BRDF-LUT pipeline. A `.hdr`
+    loader can be added later as an alternate source.
+  - **Normal mapping via screen-space derivatives** — avoids adding a tangent vertex
+    attribute, keeping the single 11-float layout used everywhere.
+  - **Lights as plain structs + `Upload`**, materials as `PbrMaterial` + `Bind` — no deep
+    class hierarchy; matches the "avoid overengineering" principle.
+  - **HDR `RGBA16F` + ACES tonemap** in a fullscreen post pass; lighting in linear space,
+    sRGB decode on albedo textures, gamma at the end.
+  - **No new third-party dependency** was introduced for PBR/IBL.
+- **Status**: Accepted and implemented. Builds Debug|x64; runtime smoke test clean (no
+  shader/GL errors). Visual correctness not verified in the dev environment.
+
 ## Pre-existing decisions (reconstructed from the code — not formally recorded before)
 These describe why the project looks the way it does; confirm/revise with the maintainer.
 

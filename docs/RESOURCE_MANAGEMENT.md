@@ -36,6 +36,17 @@
 4. **No GL error checking** around buffer/texture creation (shaders are the exception —
    they log compile/link errors).
 
+## PBR / IBL / HDR resources (Phase 4)
+- **`Application`** owns the HDR framebuffer (`hdrFBO` + `RGBA16F` color texture + depth
+  RBO) and a small empty VAO for the fullscreen tonemap; all freed in `~Application`. The
+  PBR/HDR `Shader`s, `IBL`, `Mesh`, `Model`, `Text` and `Camera` are held in `std::unique_ptr`
+  so they are destroyed before `Window` (the GL context), which is the first member.
+- **`IBL`** owns the environment/irradiance/prefilter cubemaps, the BRDF-LUT 2D texture, a
+  cube VAO/VBO, and the background `Shader`; all freed in `~IBL`. Capture FBO/RBO are local
+  to the constructor and deleted there; the window viewport is saved/restored around capture.
+- **`Model`** owns any imported GL textures (freed in `~Model`); its `Mesh`es free their own
+  VAO/VBO/EBO.
+
 ## Shader program lifecycle
 - `Shader` ctor compiles both stages, links, logs errors via `CompileError`, deletes the
   intermediate shader objects. Good. `Delete()` frees the program; called for both

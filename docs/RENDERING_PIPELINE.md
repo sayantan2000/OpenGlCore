@@ -1,60 +1,54 @@
 # Rendering Pipeline
 
-> Current implementation as written in `main.cpp` + the GLSL in `OpenGlCore/Shader/`.
+> Current implementation (`Application.cpp` + `IBL.cpp` + `OpenGlCore/Shader/`).
 
-## Setup (once, before the loop)
-1. `glfwInit`, hint GL **3.3 core**, create **fullscreen** window on primary monitor.
-2. `glfwMakeContextCurrent`, `gladLoadGL`, `glViewport(0,0,WIDTH,HEIGHT)`.
-3. Build `Shader shaderProgram` from `default.vert` + `default.frag`.
-4. Pyramid: `VerTexArray VAO1` + `VerTexBuffer VBO1` + `Triangle EBO1`; link 4 attributes
-   (pos/color/uv/normal) at stride `11*sizeof(float)`.
-5. Build `Shader lightShader` from `Light.vert` + `Light.frag`; sphere VAO/VBO/EBO with a
-   **single** position attribute at stride `3*sizeof(float)`.
-6. Light transform: `lightModel = translate(I, lightPos)`, `lightPos = (2.5, 2, 0)`.
-7. Load `Images/Brick.jpg` into `Texture`, bind sampler `tex0` to unit 0.
-8. Upload static uniforms: `lightPos`, `lightcolor`/`LightColor`, light `model`, `Scale`.
-9. `Camera camera(..., pos=(0,0.5,2))`; `glEnable(GL_DEPTH_TEST)`.
+## Startup
+1. `Window` creates the GL 3.3 core context (GLFW/GLAD), enables depth test.
+2. `Application` builds: `Camera`, `pbr`/`hdr` shaders, `IBL`, the sphere `Mesh`, the
+   `Model`, the `Text` HUD, the `LightSet`, and the HDR framebuffer.
+3. **IBL build** (`IBL` ctor, one-time, into FBOs then viewport restored):
+   - Render the **procedural sky** (`sky.frag`) into a 512³ `RGB16F` environment cubemap
+     (6 faces via `cubemap.vert` + capture projection/views); mipmaps generated.
+   - Convolve it into a 32³ **irradiance** cubemap (`irradiance.frag`).
+   - GGX-importance-sample it into a 128³ **prefiltered** specular cubemap with 5 mips
+     (`prefilter.frag`), roughness mapped to mip level.
+   - Integrate the **BRDF LUT** into a 512² `RG16F` 2D texture (`hdr.vert` + `brdf.frag`).
 
-## Per-frame loop
-1. Timing: compute `timeDiff`; update window title with FPS/ms (threshold `1.0/1000`,
-   so effectively every frame).
-2. `Time::_DeltaTime = now - lastFrame`; advance `rotation` (clamped to [0,1]).
-3. `model = rotate(model, radians(rotation), yAxis)` — **accumulates** each frame (model
-   is not reset), so rotation compounds.
-4. Clear color + depth.
-5. **Light pass**: `lightShader.Activate` → `camera.Matrix(lightShader,"camMatrix")` →
-   bind sphere VAO → upload light `model`, `_Time` → `glDrawElements(sun.Indices.size())`.
-6. **Object pass**: `shaderProgram.Activate` → `camera.updateMatrix(FOV,0.3,100)` →
-   `camera.Inputs(window, dt)` → set `scale=1` → bind `VAO1` + texture → upload `model`
-   → `glDrawElements(p.Indices.size())` → **then** `camera.Matrix(shaderProgram,...)`.
-7. `glfwSwapBuffers`, `glfwPollEvents`.
+## Per frame
+1. Timing: delta time; FPS → title + HUD (every 0.5 s).
+2. Camera input + `updateMatrix(fov=60, near=0.1, far=200)`.
+3. **Scene pass → HDR framebuffer** (`RGBA16F`), `RenderSceneHDR()`:
+   - Activate `pbr`; set `u_camPos`, `camMatrix`; upload lights (`LightSet::Upload`).
+   - Bind IBL: irradiance→unit 0, prefilter→unit 1, BRDF LUT→unit 2; `u_useIBL=1`.
+   - Draw the 7×7 sphere grid: per-sphere `u_metallic` (row), `u_roughness` (col), shared
+     `u_albedo`; map flags off (scalar material).
+   - Draw the model via `Model::DrawPBR` (albedo color/texture, dielectric defaults).
+   - Draw the **skybox** (`background.*`) sampling the env cubemap, depth `LEQUAL`, depth
+     forced to 1.0 so it fills only un-written pixels.
+4. **Tonemap pass → default framebuffer** (`TonemapToScreen()`): fullscreen triangle
+   (`hdr.vert`, no VBO), `hdr.frag` samples the HDR color, applies ACES + exposure, then
+   linear→sRGB gamma.
+5. **HUD**: `Text::RenderText` (2D overlay, alpha-blended, depth off).
+6. Swap + poll.
 
-### Ordering issues (current, confirmed)
-- **Object camera matrix is uploaded *after* `glDrawElements`** (step 6). The draw uses
-  the *previous* frame's `camMatrix`; first frame uses whatever the shader defaults to.
-- `shaderProgram` uniforms `lightPos`/`lightcolor`/`CamPos` are set while *different*
-  programs may be active at various points; `CamPos` is set near top of loop before the
-  light pass activates `lightShader`. Verify active-program vs. uniform-target when
-  touching this code.
+## PBR shading (`pbr.frag`)
+Cook-Torrance specular BRDF:
+- **D** = GGX / Trowbridge-Reitz (`DistributionGGX`).
+- **G** = Smith with Schlick-GGX, direct-lighting `k = (r+1)²/8`.
+- **F** = Schlick (`fresnelSchlick`); roughness-aware variant for IBL.
+- Metallic workflow: `F0 = mix(0.04, albedo, metallic)`; `kD = (1-F)(1-metallic)` for
+  energy conservation; Lambertian diffuse `albedo/π`.
+- Lights: directional (parallel), point and spot with **inverse-square** attenuation; spot
+  adds a smooth cone from inner/outer cosines.
+- Ambient: IBL = `kD · irradiance · albedo + prefiltered · (F·brdf.x + brdf.y)`, scaled by
+  AO; falls back to `0.03·albedo·ao` when `u_useIBL=0`.
+- Maps (when present, units 3–7): albedo (sRGB→linear), normal (perturbed via screen-space
+  derivatives — no precomputed tangents), metallic, roughness, AO.
+- Output is **linear HDR**; tonemapping happens in the HDR pass, not here.
 
-## Shaders
+## Color space
+Albedo textures are decoded sRGB→linear in the shader; lighting is done in linear space;
+the final HDR pass applies ACES then the linear→sRGB (1/2.2) gamma. No sRGB framebuffers.
 
-### `default.vert` / `default.frag` (lit object)
-- Vertex: builds `MVP = camMatrix*model`, passes a `Data` struct (world Position, Normal,
-  color, UV). `gl_Position = MVP * vec4(aPos*scale,1)`.
-- Normal transform is `normalize(Normal * transpose(mat3(model)))` — note it uses the
-  transpose of the model's upper-3x3, **not** the inverse-transpose; correct only for
-  pure rotations/uniform scale. Fine today (rotation only), fragile under non-uniform
-  scale.
-- Fragment: ambient(0.2) + diffuse (Lambert) + specular (pow 8), modulated by
-  `texture(tex0,uv) * lightcolor`. Uses GLSL 330.
-
-### `Light.vert` / `Light.frag` (light source)
-- Vertex: `gl_Position = camMatrix*model*vec4(aPos*Scale,1)`.
-- Fragment: writes `gl_FragColor = LightColor`. **Uses deprecated `gl_FragColor`** while
-  declaring an unused `out vec4 FragColor`; `_Time` uniform is unused. Works on most
-  drivers in 330 compat but is non-core-correct.
-
-## Vertex layout (lit objects)
-`[ position.xyz | color.rgb | uv.xy | normal.xyz ]` = 11 floats/vertex.
-Light sphere uses position-only (3 floats) — but its generator is broken; see Roadmap.
+## Vertex layout & texture units
+See `CLAUDE.md` — 11-float layout; units 0–2 IBL, 3–7 material maps.

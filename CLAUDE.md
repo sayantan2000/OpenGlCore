@@ -4,63 +4,70 @@
 > whole codebase each session — the docs below already capture the current state.
 
 ## What this project is
-A **learning-oriented OpenGL 3.3 renderer** (Windows / Visual Studio 2022, C++20).
-It opens a fullscreen window, draws a textured, lit pyramid and an (intended) light
-sphere, with a fly-through camera and an FPS counter in the title bar. It is **not** an
-engine yet — it is a single `main.cpp` demo backed by thin RAII-less wrapper classes.
+A **learning-oriented real-time renderer** in modern OpenGL 3.3 (Windows / Visual Studio
+2022, C++20). It now implements a **metallic-roughness PBR pipeline** (Cook-Torrance) with
+directional/point/spot lights, **Image-Based Lighting** (irradiance + prefilter + BRDF
+LUT) from a procedural HDR sky, **HDR rendering with ACES tonemapping**, an FBX/OBJ/glTF
+model loader (Assimp), and on-screen text (FreeType). The code is organized into small
+RAII modules; `main.cpp` is just an entry point.
 
 ## Build & run
-- **Prerequisite (once)**: restore Assimp via vcpkg from the repo root — the VS-bundled
-  vcpkg works: `& "C:\Program Files\Microsoft Visual Studio\18\Community\VC\vcpkg\vcpkg.exe" install --triplet x64-windows`. This populates `vcpkg_installed/` (gitignored). FreeType is already vendored (prebuilt libs + headers in `Libraries/`), so no step needed for it.
-- **Font (once)**: put a `.ttf` at `OpenGlCore/Fonts/arial.ttf` (gitignored; the HUD needs
-  it). Any TrueType font works; change the path in `main.cpp` (`Text hud(...)`) to use another.
-- Build: `./build.ps1` (or `-Run`, `-Rebuild`), or open `OpenGlCore.sln` in VS → **Debug|x64**
-  → F5. VS Code: **Ctrl+Shift+B**.
-- Include path: `Libraries/source` + the vcpkg include dir; lib path: `Libraries/lib` +
-  vcpkg lib dir. Links glfw3, opengl32, freetype, assimp. GLAD/stb compiled in.
-- **Assets are copied next to the exe on build** (Shader/, Images/, Fonts/, Models/, and the
-  vcpkg DLLs), so double-clicking the exe works. When run from a terminal, the CWD must be
-  the folder containing those asset folders (`build.ps1 -Run` handles it).
-- `.vscode/tasks.json` now builds via `build.ps1` (the old stale clang task was replaced).
+- **Prerequisite (once)**: restore Assimp via the VS-bundled vcpkg from the repo root:
+  `& "C:\Program Files\Microsoft Visual Studio\18\Community\VC\vcpkg\vcpkg.exe" install --triplet x64-windows` → populates `vcpkg_installed/` (gitignored). FreeType is vendored (prebuilt libs + headers in `Libraries/`).
+- **Font (once)**: put a `.ttf` at `OpenGlCore/Fonts/arial.ttf` (gitignored; the HUD needs it).
+- Build/run: `./build.ps1 -Run` (or `-Rebuild`), or VS → **Debug|x64** → F5, or VS Code **Ctrl+Shift+B**.
+- Assets (Shader/, Images/, Fonts/, Models/) + vcpkg DLLs are copied next to the exe on
+  build, so double-click works. From a terminal the CWD must contain those folders
+  (`build.ps1 -Run` handles it).
+- No new dependencies were added for PBR/IBL — IBL uses a **procedural sky**, so no .hdr asset.
 
-## Layout
-- `OpenGlCore/*.cpp,*.h` — the actual project source (see `docs/ARCHITECTURE.md`).
-- `OpenGlCore/Shader/` — GLSL (`default.*` = lit object, `Light.*` = light source).
-- `OpenGlCore/Images/`, `Fonts/`, `Models/` — assets.
-- `OpenGlCore/Libraries/source/` — **vendored** GLFW, GLAD, GLM, stb, freetype, zlib.
-  Treat as third-party; do not edit or document.
+## Architecture (see docs/ARCHITECTURE.md)
+Entry: `main.cpp` → `Application` (owns window, scene, render loop). Modules:
+- `Window` — GLFW/GLAD/context (RAII).
+- `Application` — scene, HDR target, render + tonemap passes, main loop.
+- `Camera`, `Mesh`, `ElementBuffer`, `VerTexArray`, `VerTexBuffer`, `Shader` — RAII GL wrappers.
+- `Geometry` — procedural sphere (11-float layout).
+- `Light` — `DirectionalLight`/`PointLight`/`SpotLight` + `LightSet::Upload`.
+- `PbrMaterial` — metallic-roughness material (scalars + optional maps, units 3–7).
+- `IBL` — builds irradiance/prefilter/BRDF-LUT from `Shader/sky.frag`; renders skybox.
+- `Model` — Assimp loader → `Mesh` list; `Draw` (albedo shader) / `DrawPBR` (PBR shader).
+- `Text` — FreeType glyph renderer.
 
-## Conventions (current, inconsistent — preserve unless refactoring)
-- Class names mix casing oddly: `VerTexArray`, `VerTexBuffer` (the EBO is now
-  `ElementBuffer`). Some method names keep odd casing (`LinkAttriBute`, `SetUniformValueF`)
-  — load-bearing; callers depend on the exact spelling. Do not rename without updating
-  every call site.
-- Vertex layout for lit objects is **11 floats**: pos(3) color(3) uv(2) normal(3).
+## Shaders (OpenGlCore/Shader/)
+- `pbr.vert`/`pbr.frag` — main PBR (Cook-Torrance GGX/Smith/Schlick, maps, lights, IBL).
+- `hdr.vert`/`hdr.frag` — fullscreen ACES tonemap + gamma.
+- IBL: `cubemap.vert`, `sky.frag`, `irradiance.frag`, `prefilter.frag`, `brdf.frag`,
+  `background.vert`/`background.frag`.
+- Legacy (still present, used by `Model::Draw` and older demos): `default.*`, `Light.*`,
+  `albedo.frag`, `text.*`.
+
+## Conventions (preserve unless refactoring)
+- **Vertex layout = 11 floats**: pos(3) color(3, unused by PBR) uv(2) normal(3). All meshes
+  (sphere, model, pyramid) use it; PBR reads loc 0/2/3.
+- **Texture units**: 0 irradiance, 1 prefilter, 2 BRDF LUT, 3 albedo, 4 normal, 5 metallic,
+  6 roughness, 7 AO.
+- Some method names keep odd casing (`LinkAttriBute`, `SetUniformValueF`) — load-bearing.
+- GL wrappers are RAII: non-copyable, movable; freed in destructors. Owned via `unique_ptr`
+  in `Application` so they free before the `Window` (GL context) is destroyed.
 
 ## Hard rules for agents
-- **Do not refactor source code without explicit approval.** See `docs/ROADMAP.md` for
-  the agreed plan and priorities; implement only approved items.
 - Preserve existing runtime behavior; prefer small, testable changes.
-- Do not add dependencies without justification (freetype + zlib are already vendored
-  but **currently unused** — see roadmap before wiring them in).
-- Build after changes; there is no test suite, so verify by running the app.
+- Build after changes (`./build.ps1`); no test suite — verify by running the app.
+- A runtime smoke test (run a few seconds, check stderr for shader/GL errors) is cheap:
+  the `Shader` class logs GLSL errors and `GLUtils.h glCheckError()` logs GL errors.
 
 ## Status
-- **Phase 0 (critical bugs) + Phase 1.1 (RAII GL wrappers) done** — see `docs/ROADMAP.md`.
-  Debug|x64 builds. GL wrappers are now RAII: non-copyable, movable; freed in destructors
-  inside a scope block in `main` (before `glfwTerminate`).
+- **Done**: Phases 0–3 of the refactor roadmap (RAII, error checking, naming, Mesh,
+  delta-time, shader correctness, Win32 decouple, FreeType text, Assimp models w/ node
+  transforms + materials + textures), plus the **full PBR + IBL + HDR renderer** and the
+  `main.cpp` → `Application` refactor. Debug|x64 builds; runtime smoke test clean
+  (no shader/GL errors). Visual output not verified in this environment.
 
-## Known-broken / sharp edges (details in docs/ROADMAP.md)
-- `Primitive::VertexBytes()`/`IndexBytes()` return byte sizes (passed to buffer ctors).
-- Sphere is position-only (light marker); no normals/UVs if you want it lit (Phase 0.2 note).
-- `default.vert` normal matrix uses `transpose(mat3(model))` not inverse-transpose; fine
-  for rotation-only, wrong under non-uniform scale (Phase 2.4).
-
-## Error handling / debugging
-- `GLUtils.h` provides `glCheckError()` — call it after GL calls you want to validate.
-- Missing shader/texture files throw `std::runtime_error`; `main` catches, logs `[FATAL]`,
-  and exits cleanly (no more raw abort).
-
-## Timing note
-Both pyramid rotation (`main.cpp`) and camera movement (`Camera.cpp`) are now delta-time
-scaled. `rotationSpeedDegPerSec` in main.cpp and `Camera::speed` (units/sec) control them.
+## Known issues / remaining tasks (see docs/ROADMAP.md)
+- No PBR texture-map assets shipped → the sphere grid uses scalar materials; maps are
+  supported in the shader but untested with real albedo/normal/metallic/roughness/AO sets.
+- IBL source is a procedural sky, not a loaded equirectangular .hdr (easy to add).
+- No framebuffer-resize handling (fixed size from the initial window).
+- `Model` has no normal/metallic/roughness map import (diffuse color/texture only).
+- Legacy shaders/classes (`default.*`, `Light.*`, `Primitive`, `Texture`) remain but are
+  no longer used by the main scene; candidates for removal.

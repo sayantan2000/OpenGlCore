@@ -233,6 +233,40 @@ float Model::ScaleToFit(float targetSize) const
 	return targetSize / largest;
 }
 
+void Model::DrawPBR(Shader& shader)
+{
+	const GLuint id = shader.ID;
+	// Basic model imports carry only a diffuse color/texture; disable the other maps
+	// and use sensible dielectric defaults.
+	glUniform1i(glGetUniformLocation(id, "u_hasNormalMap"), 0);
+	glUniform1i(glGetUniformLocation(id, "u_hasMetallicMap"), 0);
+	glUniform1i(glGetUniformLocation(id, "u_hasRoughnessMap"), 0);
+	glUniform1i(glGetUniformLocation(id, "u_hasAoMap"), 0);
+	glUniform1f(glGetUniformLocation(id, "u_metallic"), 0.0f);
+	glUniform1f(glGetUniformLocation(id, "u_roughness"), 0.6f);
+	glUniform1f(glGetUniformLocation(id, "u_ao"), 1.0f);
+	glUniform1i(glGetUniformLocation(id, "u_albedoMap"), 3); // material albedo uses unit 3
+
+	GLint hasAlbedoLoc = glGetUniformLocation(id, "u_hasAlbedoMap");
+	GLint albedoLoc = glGetUniformLocation(id, "u_albedo");
+	for (auto& sub : meshes)
+	{
+		glUniform3fv(albedoLoc, 1, &sub.albedo[0]);
+		if (sub.textureID != 0)
+		{
+			glActiveTexture(GL_TEXTURE0 + 3);
+			glBindTexture(GL_TEXTURE_2D, sub.textureID);
+			glUniform1i(hasAlbedoLoc, 1);
+		}
+		else
+		{
+			glUniform1i(hasAlbedoLoc, 0);
+		}
+		sub.mesh.Draw();
+	}
+	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
 void Model::Draw(Shader& shader)
 {
 	GLint hasTexLoc = glGetUniformLocation(shader.ID, "hasTexture");
