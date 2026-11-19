@@ -20,8 +20,34 @@ void Triangle::Unbind()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
-// Deletes the Triangle
+// Deletes the Triangle (idempotent)
 void Triangle::Delete()
 {
-	glDeleteBuffers(1, &ID);
+	if (ID != 0)
+	{
+		glDeleteBuffers(1, &ID);
+		ID = 0;
+	}
+}
+
+Triangle::~Triangle()
+{
+	Delete();
+}
+
+Triangle::Triangle(Triangle&& other) noexcept
+{
+	ID = other.ID;
+	other.ID = 0;
+}
+
+Triangle& Triangle::operator=(Triangle&& other) noexcept
+{
+	if (this != &other)
+	{
+		Delete();
+		ID = other.ID;
+		other.ID = 0;
+	}
+	return *this;
 }

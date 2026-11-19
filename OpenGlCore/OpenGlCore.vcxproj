@@ -190,4 +190,14 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <!-- Copy runtime assets next to the executable so the app can be run by double-click.
+       Shaders/textures are loaded via paths relative to the working directory. -->
+  <Target Name="CopyRuntimeAssets" AfterTargets="Build">
+    <ItemGroup>
+      <_ShaderFiles Include="$(ProjectDir)Shader\**\*" />
+      <_ImageFiles Include="$(ProjectDir)Images\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_ShaderFiles)" DestinationFiles="@(_ShaderFiles->'$(OutDir)Shader\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_ImageFiles)" DestinationFiles="@(_ImageFiles->'$(OutDir)Images\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
 </Project>

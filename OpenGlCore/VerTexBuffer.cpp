@@ -20,8 +20,34 @@ void VerTexBuffer::Unbind()
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-// Deletes the VBO
+// Deletes the VBO (idempotent)
 void VerTexBuffer::Delete()
 {
-	glDeleteBuffers(1, &ID);
+	if (ID != 0)
+	{
+		glDeleteBuffers(1, &ID);
+		ID = 0;
+	}
+}
+
+VerTexBuffer::~VerTexBuffer()
+{
+	Delete();
+}
+
+VerTexBuffer::VerTexBuffer(VerTexBuffer&& other) noexcept
+{
+	ID = other.ID;
+	other.ID = 0;
+}
+
+VerTexBuffer& VerTexBuffer::operator=(VerTexBuffer&& other) noexcept
+{
+	if (this != &other)
+	{
+		Delete();
+		ID = other.ID;
+		other.ID = 0;
+	}
+	return *this;
 }

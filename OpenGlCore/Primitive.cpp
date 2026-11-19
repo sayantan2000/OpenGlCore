@@ -6,6 +6,7 @@ Primitive::Primitive(PrimitiveType a_type)
 	{
 	case sphere:
 		GenerateSphere();
+		break;
 	case pyramid:
 		GeneratePyramid();
 		break;
@@ -21,57 +22,43 @@ Primitive::Primitive(PrimitiveType a_type)
 void Primitive::GenerateSphere()
 {
 
-	float radius = 0.5f;
-	int numSegments = 50;
-	int numStacks = 50;
-	GLfloat Vertices[7803];
-	GLuint indices[15000];
+	// Position-only sphere used as a light-source marker (rendered with Light.vert,
+	// which binds a single 3-float position attribute). Generated straight into the
+	// member vectors so the layout stays correct if the segment/stack counts change.
+	const float radius = 0.5f;
+	const int numSegments = 50;
+	const int numStacks = 50;
+
+	vertices.clear();
+	Indices.clear();
+	vertices.reserve((numStacks + 1) * (numSegments + 1) * 3);
+	Indices.reserve(numStacks * numSegments * 6);
+
 	for (int stack = 0; stack <= numStacks; ++stack) {
 		for (int segment = 0; segment <= numSegments; ++segment) {
 			float theta = stack * M_PI / numStacks;
 			float phi = segment * 2 * M_PI / numSegments;
 
-			GLfloat x = radius * sin(theta) * cos(phi);
-			GLfloat y = radius * sin(theta) * sin(phi);
-			GLfloat z = radius * cos(theta);
-
-			int iter = 3 * (stack * (numSegments + 1) + segment);
-			Vertices[iter] = x;
-			Vertices[iter + 1] = y;
-			Vertices[iter + 2] = z;
-			/*vertices[index + 1] = y;
-			vertices[index + 2] = z;*/
+			vertices.push_back(radius * sin(theta) * cos(phi)); // x
+			vertices.push_back(radius * sin(theta) * sin(phi)); // y
+			vertices.push_back(radius * cos(theta));            // z
 		}
 	}
-	int index = 0;
+
 	for (int stack = 0; stack < numStacks; ++stack) {
 		for (int segment = 0; segment < numSegments; ++segment) {
-			indices[index++] = stack * (numSegments + 1) + segment;
-			indices[index++] = (stack + 1) * (numSegments + 1) + segment;
-			indices[index++] = stack * (numSegments + 1) + segment + 1;
+			GLuint topLeft = stack * (numSegments + 1) + segment;
+			GLuint bottomLeft = (stack + 1) * (numSegments + 1) + segment;
 
-			indices[index++] = stack * (numSegments + 1) + segment + 1;
-			indices[index++] = (stack + 1) * (numSegments + 1) + segment;
-			indices[index++] = (stack + 1) * (numSegments + 1) + segment + 1;
+			Indices.push_back(topLeft);
+			Indices.push_back(bottomLeft);
+			Indices.push_back(topLeft + 1);
+
+			Indices.push_back(topLeft + 1);
+			Indices.push_back(bottomLeft);
+			Indices.push_back(bottomLeft + 1);
 		}
 	}
-	for (size_t i = 0; i < sizeof(Vertices) / sizeof(GLfloat); i++)
-	{
-		vertices.push_back(Vertices[i]);
-	}
-	for (size_t i = 0; i < sizeof(indices) / sizeof(GLuint); i++)
-	{
-		Indices.push_back(indices[i]);
-	}
-
-	//for (auto i : Vertices) {
-	//	vertices->push_back(i);
-	//}
-	//for (auto i : indices) {
-	//	Indices->push_back(i);
-	//}
-
-
 }
 
 

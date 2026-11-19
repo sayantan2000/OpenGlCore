@@ -4,6 +4,9 @@ Texture::Texture(const char* image, GLenum texType, GLenum slot, GLenum format, 
 {
 	// Assigns the type of the texture ot the texture object
 	type = texType;
+	// Remember which texture unit this texture belongs to (slot is GL_TEXTURE0 + n),
+	// so Bind() activates the correct unit. Previously left uninitialized.
+	unit = slot - GL_TEXTURE0;
 
 	// Stores the width, height, and the number of color channels of the image
 	int widthImg, heightImg, numColCh;
@@ -65,5 +68,35 @@ void Texture::Unbind()
 
 void Texture::Delete()
 {
-	glDeleteTextures(1, &ID);
+	if (ID != 0)
+	{
+		glDeleteTextures(1, &ID);
+		ID = 0;
+	}
+}
+
+Texture::~Texture()
+{
+	Delete();
+}
+
+Texture::Texture(Texture&& other) noexcept
+{
+	ID = other.ID;
+	type = other.type;
+	unit = other.unit;
+	other.ID = 0;
+}
+
+Texture& Texture::operator=(Texture&& other) noexcept
+{
+	if (this != &other)
+	{
+		Delete();
+		ID = other.ID;
+		type = other.type;
+		unit = other.unit;
+		other.ID = 0;
+	}
+	return *this;
 }

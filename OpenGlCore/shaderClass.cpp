@@ -65,10 +65,36 @@ void Shader::Activate()
 	glUseProgram(ID);
 }
 
-// Deletes the Shader Program
+// Deletes the Shader Program (idempotent)
 void Shader::Delete()
 {
-	glDeleteProgram(ID);
+	if (ID != 0)
+	{
+		glDeleteProgram(ID);
+		ID = 0;
+	}
+}
+
+Shader::~Shader()
+{
+	Delete();
+}
+
+Shader::Shader(Shader&& other) noexcept
+{
+	ID = other.ID;
+	other.ID = 0;
+}
+
+Shader& Shader::operator=(Shader&& other) noexcept
+{
+	if (this != &other)
+	{
+		Delete();
+		ID = other.ID;
+		other.ID = 0;
+	}
+	return *this;
 }
 
 void Shader::CompileError(unsigned int shader, const char* type,const char* filename)

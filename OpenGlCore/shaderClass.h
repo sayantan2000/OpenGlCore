@@ -16,14 +16,22 @@ std::string get_file_contents(const char* filename);
 class Shader
 {
 public:
-	// Reference ID of the Shader Program
-	GLuint ID;
+	// Reference ID of the Shader Program (0 = no owned GL program)
+	GLuint ID = 0;
 	// Constructor that build the Shader Program from 2 different shaders
 	Shader(const char* vertexFile, const char* fragmentFile);
+	// Frees the GL program (RAII)
+	~Shader();
+
+	// Non-copyable, movable.
+	Shader(const Shader&) = delete;
+	Shader& operator=(const Shader&) = delete;
+	Shader(Shader&& other) noexcept;
+	Shader& operator=(Shader&& other) noexcept;
 
 	// Activates the Shader Program
 	void Activate();
-	// Deletes the Shader Program
+	// Deletes the Shader Program (idempotent)
 	void Delete();
 
 	void CompileError(unsigned int shader, const char* type,const char* filename);

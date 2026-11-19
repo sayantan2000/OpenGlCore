@@ -7,7 +7,7 @@ VerTexArray::VerTexArray()
 }
 
 // Links a VBO to the VAO using a certain layout
-void VerTexArray::LinkAttriBute(VerTexBuffer VBO, GLuint layout, GLuint numComponents, GLenum typr, GLsizeiptr stride, void* offset)
+void VerTexArray::LinkAttriBute(VerTexBuffer& VBO, GLuint layout, GLuint numComponents, GLenum typr, GLsizeiptr stride, void* offset)
 {
 	VBO.Bind();
 	glVertexAttribPointer(layout, numComponents, typr, GL_FALSE, stride, offset);
@@ -27,8 +27,34 @@ void VerTexArray::Unbind()
 	glBindVertexArray(0);
 }
 
-// Deletes the VAO
+// Deletes the VAO (idempotent)
 void VerTexArray::Delete()
 {
-	glDeleteVertexArrays(1, &ID);
+	if (ID != 0)
+	{
+		glDeleteVertexArrays(1, &ID);
+		ID = 0;
+	}
+}
+
+VerTexArray::~VerTexArray()
+{
+	Delete();
+}
+
+VerTexArray::VerTexArray(VerTexArray&& other) noexcept
+{
+	ID = other.ID;
+	other.ID = 0;
+}
+
+VerTexArray& VerTexArray::operator=(VerTexArray&& other) noexcept
+{
+	if (this != &other)
+	{
+		Delete();
+		ID = other.ID;
+		other.ID = 0;
+	}
+	return *this;
 }

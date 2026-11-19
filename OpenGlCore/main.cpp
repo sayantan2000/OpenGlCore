@@ -62,7 +62,10 @@ int main()
 	// In this case the viewport goes from x = 0, y = 0, to x = 800, y = 800
 	glViewport(0, 0, WIDTH, HEIGHT);
 
-
+	// Scope block: every RAII GL wrapper below is destroyed at this block's closing
+	// brace, which runs BEFORE glfwDestroyWindow/glfwTerminate. Freeing GL objects while
+	// the context is still current is required for the deletes to actually take effect.
+	{
 
 	// Generates Shader object using shaders defualt.vert and default.frag
 	Shader shaderProgram("./Shader/default.vert", "./SHader/default.frag");
@@ -164,15 +167,15 @@ int main()
 		Time::_DeltaTime = currentFrame - lastFrame;
 
 		lastFrame = currentFrame;
-		a += Time::_DeltaTime * speed;
-		if (currentFrame - prevTime >= (float)(1 / 1000))
-		{
-			rotation += Time::_DeltaTime;
-			rotation = glm::clamp(rotation, 0.0f, 1.0f);
-			prevTime = currentFrame;
-		}
-		//model = glm::mat4(1.00f);
-		model = glm::rotate(model, glm::radians(rotation), glm::vec3(0.0f, 1.0f, 0.00f));
+
+		// Smooth, frame-rate-independent spin. `rotation` is an accumulating angle in
+		// degrees advanced by (speed * dt); the model matrix is REBUILT from identity
+		// each frame. Previously the matrix was multiplied onto itself every frame and
+		// the angle was not time-scaled, so the pyramid spun uncontrollably at high FPS.
+		const float rotationSpeedDegPerSec = 20.0f;
+		rotation += rotationSpeedDegPerSec * Time::_DeltaTime;
+		if (rotation >= 360.0f) rotation -= 360.0f;
+		model = glm::rotate(glm::mat4(1.0f), glm::radians(rotation), glm::vec3(0.0f, 1.0f, 0.0f));
 		shaderProgram.SetUniformValueVec3("CamPos", camera.Position);
 		//lightModel = glm::rotate(lightModel, glm::radians(rotation), glm::vec3(0.0f, 1.0f, 0.00f));
 
@@ -197,6 +200,9 @@ int main()
 		camera.updateMatrix(FOV, 0.3f, 100);
 		camera.Inputs(window, Time::_DeltaTime);
 		shaderProgram.SetUniformValueF("scale", 1.00f);
+		// Upload the camera matrix BEFORE drawing so this frame's draw uses the current
+		// view/projection (previously uploaded after glDrawElements -> one frame stale).
+		camera.Matrix(shaderProgram, "camMatrix");
 
 		// Bind the VAO so OpenGL knows to use it
 		VAO1.Bind();
@@ -204,7 +210,6 @@ int main()
 		shaderProgram.SeUniFormValueMattrix("model", model);
 		// Draw primitives, number of indices, datatype of indices, index of indices
 		glDrawElements(GL_TRIANGLES, p.Indices.size(), GL_UNSIGNED_INT, 0);
-		camera.Matrix(shaderProgram, "camMatrix");
 
 
 		// Swap the back buffer with the front buffer
@@ -213,14 +218,8 @@ int main()
 		glfwPollEvents();
 	}
 
-
-
-	// Delete all the objects we've created
-	VAO1.Delete();
-	VBO1.Delete();
-	EBO1.Delete();
-	shaderProgram.Delete();
-	lightShader.Delete();
+	} // end GL-object scope: all RAII wrappers (shaders, VAOs, VBOs, EBOs, texture)
+	  // are destroyed here, while the GL context is still current.
 
 	// Delete window before ending the program
 	glfwDestroyWindow(window);

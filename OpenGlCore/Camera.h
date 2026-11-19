@@ -27,8 +27,8 @@ public:
 	float width;
 	float height;
 
-	// Adjust the speed of the camera and it's sensitivity when looking around
-	float speed = 0.1f;
+	// Movement speed in units/second (scaled by delta-time in Inputs), and look sensitivity.
+	float speed = 3.0f;
 	float sensitivity = 100.0f;
 
 	// Camera constructor to set up initial values
