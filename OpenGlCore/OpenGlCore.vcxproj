@@ -125,7 +125,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\vcpkg_installed\x64-windows\include;$(ProjectDir)..\vcpkg_installed\x64-windows\include\physx;$(ProjectDir)Libraries\source\zlib-1.3.1;$(ProjectDir)Libraries\source\ImGuizmo;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)core;$(ProjectDir)render;$(ProjectDir)scene;$(ProjectDir)editor;$(ProjectDir)scripting;$(ProjectDir)physics;$(ProjectDir)io;$(ProjectDir)..\vcpkg_installed\x64-windows\include;$(ProjectDir)..\vcpkg_installed\x64-windows\include\physx;$(ProjectDir)Libraries\source\zlib-1.3.1;$(ProjectDir)Libraries\source\ImGuizmo;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -143,7 +143,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\vcpkg_installed\x64-windows\include;$(ProjectDir)..\vcpkg_installed\x64-windows\include\physx;$(ProjectDir)Libraries\source\zlib-1.3.1;$(ProjectDir)Libraries\source\ImGuizmo;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)core;$(ProjectDir)render;$(ProjectDir)scene;$(ProjectDir)editor;$(ProjectDir)scripting;$(ProjectDir)physics;$(ProjectDir)io;$(ProjectDir)..\vcpkg_installed\x64-windows\include;$(ProjectDir)..\vcpkg_installed\x64-windows\include\physx;$(ProjectDir)Libraries\source\zlib-1.3.1;$(ProjectDir)Libraries\source\ImGuizmo;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -155,31 +155,37 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Application.cpp" />
-    <ClCompile Include="AssetManager.cpp" />
-    <ClCompile Include="SceneIO.cpp" />
-    <ClCompile Include="Input.cpp" />
-    <ClCompile Include="ScriptRegistry.cpp" />
-    <ClCompile Include="ScriptSystem.cpp" />
-    <ClCompile Include="PhysicsScene.cpp" />
-    <ClCompile Include="PhysicsDebug.cpp" />
-    <ClCompile Include="Camera.cpp" />
-    <ClCompile Include="Editor.cpp" />
-    <ClCompile Include="Geometry.cpp" />
-    <ClCompile Include="LineRenderer.cpp" />
+    <ClCompile Include="core\Application.cpp" />
+    <ClCompile Include="core\Window.cpp" />
+    <ClCompile Include="core\EngineTime.cpp" />
+    <ClCompile Include="core\main.cpp" />
+    <ClCompile Include="render\shaderClass.cpp" />
+    <ClCompile Include="render\Mesh.cpp" />
+    <ClCompile Include="render\VerTexArray.cpp" />
+    <ClCompile Include="render\VerTexBuffer.cpp" />
+    <ClCompile Include="render\ElementBuffer.cpp" />
+    <ClCompile Include="render\Geometry.cpp" />
+    <ClCompile Include="render\Camera.cpp" />
+    <ClCompile Include="render\IBL.cpp" />
+    <ClCompile Include="render\PbrMaterial.cpp" />
+    <ClCompile Include="render\Light.cpp" />
+    <ClCompile Include="render\Model.cpp" />
+    <ClCompile Include="render\Text.cpp" />
+    <ClCompile Include="render\Texture.cpp" />
+    <ClCompile Include="render\LineRenderer.cpp" />
+    <ClCompile Include="render\Primitive.cpp" />
+    <ClCompile Include="editor\Editor.cpp" />
+    <ClCompile Include="scripting\Input.cpp" />
+    <ClCompile Include="scripting\ScriptRegistry.cpp" />
+    <ClCompile Include="scripting\ScriptSystem.cpp" />
+    <ClCompile Include="physics\PhysicsScene.cpp" />
+    <ClCompile Include="physics\PhysicsDebug.cpp" />
+    <ClCompile Include="io\AssetManager.cpp" />
+    <ClCompile Include="io\SceneIO.cpp" />
+    <ClCompile Include="thirdparty\glad.c" />
+    <ClCompile Include="thirdparty\stb.cpp" />
+    <ClCompile Include="thirdparty\tinyexr.cpp" />
     <ClCompile Include="Libraries\source\ImGuizmo\ImGuizmo.cpp" />
-    <ClCompile Include="glad.c" />
-    <ClCompile Include="IBL.cpp" />
-    <ClCompile Include="Light.cpp" />
-    <ClCompile Include="PbrMaterial.cpp" />
-    <ClCompile Include="Window.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="Mesh.cpp" />
-    <ClCompile Include="Model.cpp" />
-    <ClCompile Include="Primitive.cpp" />
-    <ClCompile Include="shaderClass.cpp" />
-    <ClCompile Include="stb.cpp" />
-    <ClCompile Include="tinyexr.cpp" />
     <ClCompile Include="Libraries\source\zlib-1.3.1\adler32.c" />
     <ClCompile Include="Libraries\source\zlib-1.3.1\crc32.c" />
     <ClCompile Include="Libraries\source\zlib-1.3.1\inffast.c" />
@@ -190,12 +196,6 @@
     <ClCompile Include="Libraries\source\zlib-1.3.1\uncompr.c" />
     <ClCompile Include="Libraries\source\zlib-1.3.1\deflate.c" />
     <ClCompile Include="Libraries\source\zlib-1.3.1\trees.c" />
-    <ClCompile Include="Text.cpp" />
-    <ClCompile Include="Texture.cpp" />
-    <ClCompile Include="Time.cpp" />
-    <ClCompile Include="ElementBuffer.cpp" />
-    <ClCompile Include="VerTexArray.cpp" />
-    <ClCompile Include="VerTexBuffer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shader\default.frag" />
@@ -207,41 +207,41 @@
     <Image Include="Images\World.jpg" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Application.h" />
-    <ClInclude Include="Camera.h" />
-    <ClInclude Include="Editor.h" />
-    <ClInclude Include="Enums.h" />
-    <ClInclude Include="GameObject.h" />
-    <ClInclude Include="Scene.h" />
-    <ClInclude Include="Transform.h" />
-    <ClInclude Include="EditorCommand.h" />
-    <ClInclude Include="AssetManager.h" />
-    <ClInclude Include="SceneIO.h" />
-    <ClInclude Include="Physics.h" />
-    <ClInclude Include="Input.h" />
-    <ClInclude Include="ScriptBehavior.h" />
-    <ClInclude Include="ScriptRegistry.h" />
-    <ClInclude Include="ScriptSystem.h" />
-    <ClInclude Include="Picking.h" />
-    <ClInclude Include="PrimitiveLibrary.h" />
-    <ClInclude Include="LineRenderer.h" />
+    <ClInclude Include="core\Application.h" />
+    <ClInclude Include="core\Window.h" />
+    <ClInclude Include="core\EngineTime.h" />
+    <ClInclude Include="core\GLUtils.h" />
+    <ClInclude Include="core\Enums.h" />
+    <ClInclude Include="render\shaderClass.h" />
+    <ClInclude Include="render\Mesh.h" />
+    <ClInclude Include="render\VerTexArray.h" />
+    <ClInclude Include="render\VerTexBuffer.h" />
+    <ClInclude Include="render\ElementBuffer.h" />
+    <ClInclude Include="render\Geometry.h" />
+    <ClInclude Include="render\Camera.h" />
+    <ClInclude Include="render\IBL.h" />
+    <ClInclude Include="render\PbrMaterial.h" />
+    <ClInclude Include="render\Light.h" />
+    <ClInclude Include="render\Model.h" />
+    <ClInclude Include="render\Text.h" />
+    <ClInclude Include="render\Texture.h" />
+    <ClInclude Include="render\LineRenderer.h" />
+    <ClInclude Include="render\Primitive.h" />
+    <ClInclude Include="scene\Transform.h" />
+    <ClInclude Include="scene\GameObject.h" />
+    <ClInclude Include="scene\Scene.h" />
+    <ClInclude Include="scene\PrimitiveLibrary.h" />
+    <ClInclude Include="editor\Editor.h" />
+    <ClInclude Include="editor\EditorCommand.h" />
+    <ClInclude Include="editor\Picking.h" />
+    <ClInclude Include="scripting\Input.h" />
+    <ClInclude Include="scripting\ScriptBehavior.h" />
+    <ClInclude Include="scripting\ScriptRegistry.h" />
+    <ClInclude Include="scripting\ScriptSystem.h" />
+    <ClInclude Include="physics\Physics.h" />
+    <ClInclude Include="io\AssetManager.h" />
+    <ClInclude Include="io\SceneIO.h" />
     <ClInclude Include="Libraries\source\ImGuizmo\ImGuizmo.h" />
-    <ClInclude Include="Geometry.h" />
-    <ClInclude Include="GLUtils.h" />
-    <ClInclude Include="IBL.h" />
-    <ClInclude Include="Light.h" />
-    <ClInclude Include="Mesh.h" />
-    <ClInclude Include="PbrMaterial.h" />
-    <ClInclude Include="Window.h" />
-    <ClInclude Include="Model.h" />
-    <ClInclude Include="Primitive.h" />
-    <ClInclude Include="shaderClass.h" />
-    <ClInclude Include="Text.h" />
-    <ClInclude Include="Texture.h" />
-    <ClInclude Include="Time.h" />
-    <ClInclude Include="ElementBuffer.h" />
-    <ClInclude Include="VerTexArray.h" />
-    <ClInclude Include="VerTexBuffer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
