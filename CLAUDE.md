@@ -48,8 +48,24 @@ organized into small RAII modules; `main.cpp` is just an entry point.
   on Stop); add a **Script** component in the Inspector and pick a behavior (Rotator/FloatBob/
   WasdMover). Camera/tool input is ignored while over a panel or the gizmo.
 
+## Project layout & conventions
+- Sources live in purpose subfolders under `OpenGlCore/`: `core/` (Application, Window,
+  EngineTime, GLUtils, Enums, main), `render/` (Shader, Mesh, buffers, Geometry, Camera, IBL,
+  PbrMaterial, Light, Model, Text, Texture, LineRenderer, Primitive), `scene/` (Transform,
+  GameObject, Scene, PrimitiveLibrary), `editor/` (Editor, EditorCommand, Picking),
+  `scripting/` (Input, ScriptBehavior, ScriptRegistry, ScriptSystem), `physics/` (Physics,
+  PhysicsScene, PhysicsDebug), `io/` (AssetManager, SceneIO), `thirdparty/` (glad/stb/tinyexr
+  impl TUs). Each folder is on the include path, so `#include "X.h"` works across folders.
+- **All engine code is in `namespace ogl`** (third-party stays global; `main()` is global and
+  uses `ogl::Application`). New engine files should open `namespace ogl { … }` after includes.
+- **Gameplay scripting is C++** (and will stay C++): subclass `ogl::ScriptBehavior`
+  (`OnStart`/`OnUpdate`/`OnCollision`/`OnTrigger`), register it in `ScriptRegistry`, attach by
+  name in the Inspector. No C#/Unity runtime, no embedded VM.
+- Note: don't name an engine header after a CRT header (e.g. `Time.h` clashes with `<time.h>`
+  on case-insensitive Windows once its folder is on the include path — hence `EngineTime.h`).
+
 ## Architecture (see docs/ARCHITECTURE.md)
-Entry: `main.cpp` → `Application` (owns window, scene, render loop). Modules:
+Entry: `core/main.cpp` → `ogl::Application` (owns window, scene, render loop). Modules:
 - `Window` — GLFW/GLAD/context (RAII).
 - `Application` — scene, HDR target, render + tonemap passes, main loop.
 - `Camera`, `Mesh`, `ElementBuffer`, `VerTexArray`, `VerTexBuffer`, `Shader` — RAII GL wrappers.

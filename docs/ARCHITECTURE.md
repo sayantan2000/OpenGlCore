@@ -3,6 +3,12 @@
 > Describes the **actual current implementation**. Proposed/remaining work is in
 > `docs/ROADMAP.md`.
 
+**Layout & namespace**: engine sources live in subfolders under `OpenGlCore/`
+(`core/ render/ scene/ editor/ scripting/ physics/ io/ thirdparty/`), each on the include path.
+All engine code is in `namespace ogl`; third-party code (glad/stb/tinyexr/ImGuizmo/zlib) and
+their forward declarations stay global, and `core/main.cpp` is global and builds
+`ogl::Application`. (Module names below are unqualified for brevity.)
+
 ## High-level shape
 `main.cpp` is a minimal entry point that constructs an `Application` and calls `Run()`.
 `Application` owns the window, render targets, scene and main loop, and wires together the
