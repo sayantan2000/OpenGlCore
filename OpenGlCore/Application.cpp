@@ -3,6 +3,7 @@
 #include "GLUtils.h"
 #include "Time.h"
 #include "SceneIO.h"
+#include "ScriptRegistry.h"
 #include <cstdlib>
 #include <iostream>
 #include <glm/gtc/matrix_transform.hpp>
@@ -32,6 +33,8 @@ Application::Application()
 
 	assets = std::make_unique<AssetManager>();
 	lines = std::make_unique<LineRenderer>();
+	input.Init(window.Handle());
+	ScriptRegistry::RegisterBuiltins();
 	BuildPrimitiveLibrary();
 
 	pbrShader->Activate();
@@ -42,7 +45,7 @@ Application::Application()
 	scene = std::make_unique<Scene>();
 	BuildScene();
 
-	editor.Init(window.Handle(), camera.get(), &primitives, assets.get());
+	editor.Init(window.Handle(), camera.get(), &primitives, assets.get(), &input, &scripts);
 	editor.Log(std::string("IBL source: ") + (ibl->UsingHDRI() ? "HDRI (ballroom_4k.exr)" : "procedural sky"));
 	editor.Log("Scene loaded: " + std::to_string(scene->Count()) + " objects.");
 
@@ -92,7 +95,8 @@ void Application::BuildScene()
 
 	// --- Two spheres with scalar materials (metal + dielectric), using the primitive mesh ---
 	const PrimitiveDef& sphereDef = primitives.Get(PrimitiveType::Sphere);
-	auto makeSphere = [&](const char* name, glm::vec3 pos, glm::vec3 color, float metal, float rough)
+	auto makeSphere = [&](const char* name, glm::vec3 pos, glm::vec3 color, float metal, float rough,
+		const char* scriptName)
 	{
 		auto go = std::make_unique<GameObject>();
 		go->name = name;
@@ -111,10 +115,12 @@ void Application::BuildScene()
 		mr.localMin = sphereDef.localMin;
 		mr.localMax = sphereDef.localMax;
 		go->meshRenderer = mr;
+		if (scriptName) { ScriptComponent sc; sc.behaviorName = scriptName; go->script = sc; }
 		scene->Add(std::move(go));
 	};
-	makeSphere("Metal Sphere", glm::vec3(-4.5f, 0.0f, 0.0f), glm::vec3(0.95f, 0.75f, 0.35f), 1.0f, 0.2f);
-	makeSphere("Plastic Sphere", glm::vec3(4.5f, 0.0f, 0.0f), glm::vec3(0.1f, 0.4f, 0.85f), 0.0f, 0.4f);
+	// Scripts demonstrate Play mode: one spins, one bobs (press Play; Stop restores state).
+	makeSphere("Metal Sphere", glm::vec3(-4.5f, 0.0f, 0.0f), glm::vec3(0.95f, 0.75f, 0.35f), 1.0f, 0.2f, "Rotator");
+	makeSphere("Plastic Sphere", glm::vec3(4.5f, 0.0f, 0.0f), glm::vec3(0.1f, 0.4f, 0.85f), 0.0f, 0.4f, "FloatBob");
 
 	// --- Lights as scene objects ---
 	auto makeLight = [&](const char* name, LightComponent::Type type, glm::vec3 pos,
@@ -429,8 +435,29 @@ void Application::Run()
 			std::cout << "[SELFTEST] first='" << g->name << "' geometryResolved=" << geo
 				<< " albedoMap=" << (g->meshRenderer ? g->meshRenderer->material.albedoMap : 0) << std::endl;
 		}
+		// Exercise the script system (Play-mode logic) headlessly: tick a scripted object and
+		// confirm its transform changes, then "stop".
+		bool scriptsOk = false;
+		if (loaded)
+		{
+			GameObject* spin = nullptr;
+			for (auto& o : reloaded.Objects())
+				if (o->script && o->script->behaviorName == "Rotator") { spin = o.get(); break; }
+			if (spin)
+			{
+				float y0 = spin->transform.rotationEuler.y;
+				scripts.Begin(reloaded, input, 0.016f);
+				for (int i = 0; i < 10; ++i) scripts.Update(reloaded, input, 0.016f);
+				scripts.End();
+				scriptsOk = (spin->transform.rotationEuler.y != y0);
+				std::cout << "[SELFTEST] script Rotator dy=" << (spin->transform.rotationEuler.y - y0)
+					<< " running=" << scripts.IsRunning() << std::endl;
+			}
+			else std::cout << "[SELFTEST] (no Rotator-scripted object found)" << std::endl;
+		}
+
 		std::cout << "[SELFTEST] "
-			<< ((saved && loaded && reloaded.Count() == before) ? "PASS" : "FAIL") << std::endl;
+			<< ((saved && loaded && reloaded.Count() == before && scriptsOk) ? "PASS" : "FAIL") << std::endl;
 		return;
 	}
 
@@ -442,6 +469,7 @@ void Application::Run()
 	{
 		window.PollEvents();
 		ResizeIfNeeded();
+		input.Update();
 
 		double now = glfwGetTime();
 		Time::_DeltaTime = (float)(now - lastFrame);
@@ -466,6 +494,7 @@ void Application::Run()
 		// reflect this frame's interaction.
 		editor.BeginFrame();
 		editor.BuildUI(*scene, settings, view, proj, fbWidth, fbHeight, Time::_DeltaTime);
+		editor.Update(*scene, Time::_DeltaTime); // tick scripts while in Play mode
 
 		// Camera flythrough only when ImGui/gizmo aren't capturing input.
 		if (!editor.WantCaptureMouse() && !editor.WantCaptureKeyboard() && !editor.WantCaptureViewport())

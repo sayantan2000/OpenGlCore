@@ -51,6 +51,15 @@ struct LightComponent
 	bool enabled = true;
 };
 
+// A script behavior attached to an object. Stores only the registered behavior *name* (so a
+// GameObject stays copyable/serializable); the live `ScriptBehavior` instance is owned by the
+// ScriptSystem during Play mode and resolved by object id.
+struct ScriptComponent
+{
+	std::string behaviorName;   // key into the ScriptRegistry ("" = none)
+	bool enabled = true;
+};
+
 // A scene object: a stable id, a name, an active flag, a transform, and optional
 // components. Kept deliberately simple (optional components, not a generic ECS) per the
 // project's scope. `id` is assigned by the Scene and stays constant for the object's
@@ -65,6 +74,7 @@ struct GameObject
 	Transform transform;          // local (relative to parent)
 	std::optional<MeshRenderer> meshRenderer;
 	std::optional<LightComponent> light;
+	std::optional<ScriptComponent> script;
 
 	// Short type label for the Inspector header.
 	const char* TypeLabel() const

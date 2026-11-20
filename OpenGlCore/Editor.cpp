@@ -6,6 +6,8 @@
 #include "Picking.h"
 #include "AssetManager.h"
 #include "SceneIO.h"
+#include "ScriptSystem.h"
+#include "ScriptRegistry.h"
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -59,11 +61,14 @@ namespace
 // ---------------------------------------------------------------------------------------
 // Lifecycle
 // ---------------------------------------------------------------------------------------
-void Editor::Init(GLFWwindow* window, Camera* cam, const PrimitiveLibrary* prims, AssetManager* am)
+void Editor::Init(GLFWwindow* window, Camera* cam, const PrimitiveLibrary* prims, AssetManager* am,
+	Input* in, ScriptSystem* ss)
 {
 	camera = cam;
 	primitives = prims;
 	assets = am;
+	input = in;
+	scripts = ss;
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -233,6 +238,18 @@ void Editor::DrawMainMenuBar(Scene& scene)
 	{
 		ImGui::MenuItem("Undo History", nullptr, &showHistoryPanel);
 		ImGui::EndMenu();
+	}
+
+	// Play / Stop toolbar (right of the menus).
+	ImGui::Separator();
+	if (!isPlaying)
+	{
+		if (ImGui::MenuItem("\xE2\x96\xB6 Play")) EnterPlayMode(scene);   // ▶
+	}
+	else
+	{
+		if (ImGui::MenuItem("\xE2\x96\xA0 Stop")) ExitPlayMode(scene);    // ■
+		ImGui::TextDisabled("  [PLAYING]");
 	}
 
 	ImGui::EndMainMenuBar();
@@ -496,6 +513,50 @@ void Editor::DrawInspector(Scene& scene, RenderSettings& settings)
 			}
 		}
 	}
+
+	// Script
+	if (ImGui::CollapsingHeader("Script", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		if (go->script)
+		{
+			ScriptComponent& sc = *go->script;
+			bool en = sc.enabled;
+			if (ImGui::Checkbox("Enabled##script", &en))
+			{
+				GameObject before = *go; sc.enabled = en;
+				history.Push(std::make_unique<ModifyCommand>(go->id, before, *go, "Toggle Script"));
+			}
+
+			// Behavior picker: "(none)" + registered behaviors.
+			std::vector<const char*> items;
+			items.push_back("(none)");
+			for (const std::string& n : ScriptRegistry::Names()) items.push_back(n.c_str());
+			int current = 0;
+			for (int i = 1; i < (int)items.size(); ++i)
+				if (sc.behaviorName == items[i]) { current = i; break; }
+			GameObject beforeSel = *go;
+			if (ImGui::Combo("Behavior", &current, items.data(), (int)items.size()))
+			{
+				sc.behaviorName = (current == 0) ? std::string() : items[current];
+				history.Push(std::make_unique<ModifyCommand>(go->id, beforeSel, *go, "Set Behavior"));
+			}
+			if (sc.behaviorName.empty()) ImGui::TextDisabled("No behavior selected.");
+
+			if (ImGui::Button("Remove Script"))
+			{
+				GameObject before = *go; go->script.reset();
+				history.Push(std::make_unique<ModifyCommand>(go->id, before, *go, "Remove Script"));
+			}
+		}
+		else
+		{
+			if (ImGui::Button("Add Script Component"))
+			{
+				GameObject before = *go; go->script = ScriptComponent{};
+				history.Push(std::make_unique<ModifyCommand>(go->id, before, *go, "Add Script"));
+			}
+		}
+	}
 }
 
 void Editor::DrawConsole(const RenderSettings& settings)
@@ -647,6 +708,7 @@ void Editor::HandleShortcuts(Scene& scene)
 	ImGuiIO& io = ImGui::GetIO();
 	if (io.WantTextInput) return;                              // don't steal typing
 	if (ImGui::IsMouseDown(ImGuiMouseButton_Right)) return;    // navigating (flythrough)
+	if (isPlaying) return;                                     // scripts own input during Play
 
 	if (io.KeyCtrl)
 	{
@@ -826,6 +888,39 @@ void Editor::LoadScene(Scene& scene)
 	}
 	else
 		Log("Load failed: " + err);
+}
+
+// ---------------------------------------------------------------------------------------
+// Play mode
+// ---------------------------------------------------------------------------------------
+void Editor::EnterPlayMode(Scene& scene)
+{
+	if (isPlaying || !scripts || !input) return;
+	playSnapshot = SceneIO::SaveToString(scene); // capture edit-time state
+	scripts->Begin(scene, *input, 0.0f);
+	isPlaying = true;
+	Log("Play: entered play mode (scene snapshot saved).");
+}
+
+void Editor::ExitPlayMode(Scene& scene)
+{
+	if (!isPlaying) return;
+	if (scripts) scripts->End();
+	if (assets && primitives && !playSnapshot.empty())
+	{
+		std::string err;
+		if (!SceneIO::LoadFromString(scene, playSnapshot, *assets, *primitives, &err))
+			Log("Stop: restore failed: " + err);
+	}
+	history.Clear(); // objects were rebuilt from the snapshot
+	isPlaying = false;
+	Log("Stop: scene restored to pre-play state.");
+}
+
+void Editor::Update(Scene& scene, float dt)
+{
+	if (isPlaying && scripts && input)
+		scripts->Update(scene, *input, dt);
 }
 
 // ---------------------------------------------------------------------------------------

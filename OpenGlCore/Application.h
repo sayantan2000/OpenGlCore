@@ -17,6 +17,8 @@
 #include "PrimitiveLibrary.h"
 #include "LineRenderer.h"
 #include "AssetManager.h"
+#include "Input.h"
+#include "ScriptSystem.h"
 #include "shaderClass.h"
 #include <vector>
 
@@ -58,6 +60,9 @@ private:
 	std::vector<std::unique_ptr<Mesh>> primitiveMeshes;
 	PrimitiveLibrary primitives;
 	std::unique_ptr<LineRenderer> lines;
+
+	Input input;               // keyboard/mouse abstraction (polled each frame)
+	ScriptSystem scripts;      // runs script behaviors during Play mode
 
 	std::unique_ptr<Scene> scene;
 	Editor editor;

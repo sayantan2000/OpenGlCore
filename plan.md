@@ -23,15 +23,18 @@ Make what already exists persistent and composable. Highest return, low risk.
       local (cycle-guarded); Hierarchy is a tree with **drag-to-reparent** (+ Unparent);
       picking, gizmo (world→local on drag), focus and rendering all use world matrices.
 
-## Tier 2 — Engine runtime (the "game" part)
-- [ ] **Play / Stop mode** with an update loop distinct from rendering (snapshot scene on Play,
-      restore on Stop).
-- [ ] **Scripting / behaviors** — a `Script` component (`OnStart`/`OnUpdate`), either a C++
-      behavior interface or embedded **Lua (sol2)** so gameplay doesn't need a recompile.
-- [ ] **Input system** — actions/axes over keyboard + mouse + gamepad, replacing direct
-      `glfwGetKey` polling.
+## Tier 2 — Engine runtime (the "game" part)  ⏳ IN PROGRESS
+- [x] **Play / Stop mode** (`Editor` + `ScriptSystem`): snapshot the scene to JSON on Play,
+      run scripts each frame, restore on Stop. Play/Stop button in the menu bar.
+- [x] **Scripting / behaviors** — native C++ `ScriptBehavior` (`OnStart`/`OnUpdate`) +
+      `ScriptRegistry` (name→factory, serializable `ScriptComponent`) + `ScriptSystem` (owns
+      live instances by object id during Play). Example behaviors: Rotator, FloatBob, WasdMover.
+      *(Lua/sol2 scripting deferred — native interface first.)*
+- [x] **Input system** (`Input.{h,cpp}`) — edge-detected keys/buttons, mouse pos/delta, named
+      axes (Horizontal/Vertical); polled once per frame, read by scripts. *(Gamepad TODO.)*
 - [ ] **Event/messaging system** — decoupled communication (collision events, UI events, etc.).
 - [ ] *(Defer)* **Real ECS (EnTT)** — only once component variety/entity counts justify it.
+- [ ] *(Next)* Lua scripting, script parameters exposed in the Inspector, gamepad input.
 
 ## Tier 3 — Physics & spatial systems
 - [ ] **Physics** (Jolt or Bullet) — rigid bodies, colliders, raycasts (reuse the editor ray math).

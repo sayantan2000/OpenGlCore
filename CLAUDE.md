@@ -39,8 +39,10 @@ organized into small RAII modules; `main.cpp` is just an entry point.
   double-click focuses the selection. **Delete** deletes, **Ctrl+D** duplicates, **Ctrl+Z/
   Ctrl+Y** undo/redo, **Ctrl+S / Ctrl+O** save/load scene (File menu; default `scene.json`).
   Right-click the Hierarchy for the Create menu (Empty / Primitive / Light); **drag** a
-  Hierarchy row onto another to **reparent** (drop on empty space to unparent). Camera/tool
-  input is ignored while the cursor is over a panel or the gizmo.
+  Hierarchy row onto another to **reparent** (drop on empty space to unparent). **Play / Stop**
+  (menu bar) enters/exits play mode: scripts run (the scene is snapshotted on Play and restored
+  on Stop); add a **Script** component in the Inspector and pick a behavior (Rotator/FloatBob/
+  WasdMover). Camera/tool input is ignored while over a panel or the gizmo.
 
 ## Architecture (see docs/ARCHITECTURE.md)
 Entry: `main.cpp` → `Application` (owns window, scene, render loop). Modules:
@@ -64,8 +66,16 @@ Entry: `main.cpp` → `Application` (owns window, scene, render loop). Modules:
   uploads); materials store texture paths, mesh renderers store a `sourceId` (primitive name or
   model path) so the scene can be serialized and re-resolved.
 - `SceneIO.{h,cpp}` — JSON scene save/load (nlohmann/json, vendored at
-  `Libraries/source/json`). Round-trips ids, parent links, transforms, materials (+ map paths)
-  and all light types; resolves geometry via `PrimitiveLibrary`/`AssetManager` on load.
+  `Libraries/source/json`). Round-trips ids, parent links, transforms, materials (+ map paths),
+  all light types and script components; resolves geometry via `PrimitiveLibrary`/`AssetManager`
+  on load. Also `SaveToString`/`LoadFromString` for in-memory Play-mode snapshots.
+- `Input.{h,cpp}` — GLFW input abstraction (edge-detected keys/buttons, mouse pos/delta, named
+  axes); polled once per frame by `Application`, read by scripts in Play mode.
+- `ScriptBehavior.h` / `ScriptRegistry.{h,cpp}` / `ScriptSystem.{h,cpp}` — native C++ scripting:
+  a `ScriptBehavior` base (`OnStart`/`OnUpdate` with a `ScriptContext`), a name→factory registry
+  (built-ins: Rotator, FloatBob, WasdMover), and a system that owns live instances by object id
+  during Play. `GameObject` stores only the behavior name (`ScriptComponent`) so it stays
+  copyable/serializable.
 - `Editor` — Dear ImGui editor: fixed Hierarchy/Inspector/Console panels + central viewport
   rect, viewport ray-picking, ImGuizmo transform gizmos, keyboard shortcuts, camera focus,
   Hierarchy Create context menu (Empty/Primitive/Light), and undo/redo. Camera/tool input is
@@ -113,10 +123,12 @@ Entry: `main.cpp` → `Application` (owns window, scene, render loop). Modules:
   layout, Hierarchy Create menu, primitive generation, rectangle/area light, centralized
   undo/redo), and **Tier 1 toward a game engine**: an `AssetManager` (textures/models by
   path), **JSON scene serialization** (Ctrl+S/Ctrl+O), and **parent/child transform
-  hierarchy** (drag-reparent; world matrices everywhere). Debug|x64 builds; runtime smoke test
-  clean; serialization round-trip verified headlessly (`OGL_SCENE_SELFTEST`). **Editor
-  interaction and visual output were NOT verified in this environment (no display).**
-- See `plan.md` for the full engine roadmap (Tier 1 done; Tiers 2–6 next).
+  hierarchy** (drag-reparent; world matrices everywhere), plus **Tier 2 (in progress)**:
+  **Play/Stop mode**, an **Input** system, and native **C++ scripting** (`ScriptBehavior` /
+  `ScriptRegistry` / `ScriptSystem`). Debug|x64 builds; runtime smoke test clean; serialization
+  + script round-trip verified headlessly (`OGL_SCENE_SELFTEST`). **Editor interaction and
+  visual output were NOT verified in this environment (no display).**
+- See `plan.md` for the full engine roadmap (Tier 1 done; Tier 2 in progress; Tiers 3–6 next).
 
 ## Known issues / remaining tasks (see docs/ROADMAP.md)
 - PBR texture maps are exercised by the wooden chair (BaseColor/Normal/Roughness/AO);

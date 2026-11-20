@@ -124,6 +124,30 @@
   links (children were promoted); no file dialog (fixed `scene.json` path); textures are not
   yet sRGB-flagged at upload (shader still does the decode).
 
+## ADR-0006 — Tier 2 engine runtime: play mode, input, native scripting (2026-11-20)
+- **Context**: Make the editor *run* a scene, not just edit one (see `plan.md` Tier 2).
+- **Decisions**:
+  - **Play/Stop via a JSON snapshot** rather than a deep-copy clone or a parallel runtime
+    scene: on Play the scene is serialized to a string (`SceneIO::SaveToString`) and on Stop
+    restored (`LoadFromString`), so play-time mutations are discarded exactly. Reuses the Tier 1
+    serializer — no new state model. Undo history is cleared on stop (objects were rebuilt).
+  - **Native C++ scripting first**, not Lua/sol2: a `ScriptBehavior` base with `OnStart`/
+    `OnUpdate(ScriptContext)`, a `ScriptRegistry` (name→factory), and a `ScriptSystem` that owns
+    live instances **keyed by object id**. This keeps `GameObject` copyable/serializable (it
+    stores only the behavior name in `ScriptComponent`), which is required by the undo snapshots
+    and the serializer. Lua is deferred until a scripting need actually justifies the dependency
+    and build cost.
+  - **Instances live only during Play** (created in `Begin`, destroyed in `End`) so edit-mode
+    stays pure data and behaviors can hold per-run state (e.g. FloatBob's base height).
+  - **Input abstraction** (`Input`) wraps GLFW with edge detection + named axes, polled once per
+    frame, so scripts don't poll GLFW directly and the camera keeps its own direct polling.
+- **Status**: Accepted and implemented. Debug|x64 builds; normal run clean; headless self-test
+  (`OGL_SCENE_SELFTEST`) exercises save→reload **and** runs the Rotator behavior 10 ticks
+  (dy=9.6° = 60°/s·0.16s) — **PASS**. Play/Stop *UI* not visually verified (no display).
+- **Known limitations**: no Lua; script parameters aren't yet editable in the Inspector (only
+  the behavior name); no gamepad; no event/messaging system yet; objects spawned during Play
+  get no script instance until the next Play.
+
 ## Pre-existing decisions (reconstructed from the code — not formally recorded before)
 These describe why the project looks the way it does; confirm/revise with the maintainer.
 

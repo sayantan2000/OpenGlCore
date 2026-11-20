@@ -45,7 +45,9 @@ main.cpp
 | `GameObject.h` | Scene object: name, active, `Transform`, optional components | `std::optional<MeshRenderer>` + `std::optional<LightComponent>` (no ECS). |
 | `Scene.h` | GameObject list + selection + hierarchy | Add/InsertAt/RemoveById/FindById by stable `id`; `WorldMatrix`/`SetParent` (cycle-guarded) for parent/child transforms; `Clear` for load. |
 | `AssetManager.{h,cpp}` | Texture/Model cache keyed by path | Shared GPU uploads; lets materials/meshes reference assets by path (serializable). |
-| `SceneIO.{h,cpp}` | JSON scene save/load | Round-trips ids/parents/transforms/materials/lights; resolves geometry+maps via PrimitiveLibrary/AssetManager. |
+| `SceneIO.{h,cpp}` | JSON scene save/load | Round-trips ids/parents/transforms/materials/lights/scripts; resolves geometry+maps via PrimitiveLibrary/AssetManager; string variants for Play snapshots. |
+| `Input.{h,cpp}` | GLFW input abstraction | Edge-detected keys/buttons, mouse pos/delta, named axes; polled per frame. |
+| `ScriptBehavior.h`/`ScriptRegistry.{h,cpp}`/`ScriptSystem.{h,cpp}` | Native C++ scripting | `OnStart`/`OnUpdate` behaviors; name→factory registry (Rotator/FloatBob/WasdMover); live instances by id during Play. |
 | `Editor.{h,cpp}` | Dear ImGui editor: fixed layout, picking, gizmos, shortcuts, focus, create menus, undo/redo | Hierarchy/Inspector/Console fixed panels + central viewport rect; per-component Inspector drawers with per-interaction undo; gates camera via WantCaptureMouse/Keyboard/Viewport. |
 | `EditorCommand.h` | Undo/redo command pattern + `CommandHistory` | `ModifyCommand` (before/after GameObject snapshot), `Add`/`RemoveCommand`; bounded stacks. |
 | `Picking.h` | Screen→world ray + ray/AABB (local-space) | `ScreenPointToRay`, `RayObjectAABB`; nearest hit for click selection. |
@@ -113,6 +115,14 @@ main.cpp
   `pbr.frag` (`shadeRect`) — closest-point diffuse + reflection-ray specular, area-scaled,
   one-sided, inverse-square. `LineRenderer` draws its outline + normal. Not full LTC; see
   ADR-0004.
+- **Play mode & scripting**: `Editor::EnterPlayMode` snapshots the scene to a JSON string
+  (`SceneIO::SaveToString`) and `ScriptSystem::Begin` instantiates a `ScriptBehavior` (via
+  `ScriptRegistry`) for every object with an enabled `ScriptComponent`, calling `OnStart`. Each
+  frame `Application` polls `Input` and `Editor::Update` ticks `ScriptSystem::Update` (→ each
+  behavior's `OnUpdate(ScriptContext)`), which mutates the live scene. `ExitPlayMode` ends the
+  system and restores the snapshot (`LoadFromString`), discarding play-time changes. Behaviors
+  are owned by the system keyed by object id, so `GameObject` stays copyable/serializable (it
+  stores only the behavior name). See ADR-0006.
 
 ## Design patterns (deliberately lightweight)
 - **RAII** for every GL resource (rule-of-five wrappers; `unique_ptr` ownership in `Application`).

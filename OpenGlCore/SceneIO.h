@@ -16,6 +16,11 @@ namespace SceneIO
 	bool Save(Scene& scene, const std::string& path, std::string* error = nullptr);
 	bool Load(Scene& scene, const std::string& path,
 		AssetManager& assets, const PrimitiveLibrary& primitives, std::string* error = nullptr);
+
+	// In-memory variants (used for Play-mode snapshots). Same format as the file versions.
+	std::string SaveToString(Scene& scene);
+	bool LoadFromString(Scene& scene, const std::string& json,
+		AssetManager& assets, const PrimitiveLibrary& primitives, std::string* error = nullptr);
 }
 
 #endif

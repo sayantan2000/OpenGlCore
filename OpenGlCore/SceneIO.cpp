@@ -7,6 +7,7 @@
 
 #include <json/json.hpp>
 #include <fstream>
+#include <sstream>
 #include <memory>
 
 using json = nlohmann::json;
@@ -24,27 +25,18 @@ namespace
 	json MaterialToJson(const PbrMaterial& m)
 	{
 		return json{
-			{"albedo", Vec3(m.albedo)},
-			{"metallic", m.metallic},
-			{"roughness", m.roughness},
-			{"ao", m.ao},
-			{"albedoMap", m.albedoMapPath},
-			{"normalMap", m.normalMapPath},
-			{"metallicMap", m.metallicMapPath},
-			{"roughnessMap", m.roughnessMapPath},
-			{"aoMap", m.aoMapPath},
+			{"albedo", Vec3(m.albedo)}, {"metallic", m.metallic}, {"roughness", m.roughness}, {"ao", m.ao},
+			{"albedoMap", m.albedoMapPath}, {"normalMap", m.normalMapPath}, {"metallicMap", m.metallicMapPath},
+			{"roughnessMap", m.roughnessMapPath}, {"aoMap", m.aoMapPath},
 		};
 	}
-}
 
-namespace SceneIO
-{
-	bool Save(Scene& scene, const std::string& path, std::string* error)
+	// Serialize the whole scene to a JSON object.
+	json SceneToJson(Scene& scene)
 	{
 		json root;
-		root["version"] = 1;
+		root["version"] = 2;
 		json arr = json::array();
-
 		for (auto& up : scene.Objects())
 		{
 			const GameObject* go = up.get();
@@ -58,70 +50,40 @@ namespace SceneIO
 				{"rotation", Vec3(go->transform.rotationEuler)},
 				{"scale", Vec3(go->transform.scale)},
 			};
-
 			if (go->meshRenderer)
 			{
 				const MeshRenderer& mr = *go->meshRenderer;
 				j["meshRenderer"] = {
 					{"kind", mr.kind == MeshRenderer::Geometry::Model ? "model" : "primitive"},
-					{"source", mr.sourceId},
-					{"meshName", mr.meshName},
-					{"materialName", mr.materialName},
-					{"enabled", mr.enabled},
-					{"localMin", Vec3(mr.localMin)},
-					{"localMax", Vec3(mr.localMax)},
+					{"source", mr.sourceId}, {"meshName", mr.meshName}, {"materialName", mr.materialName},
+					{"enabled", mr.enabled}, {"localMin", Vec3(mr.localMin)}, {"localMax", Vec3(mr.localMax)},
 					{"material", MaterialToJson(mr.material)},
 				};
 			}
-
 			if (go->light)
 			{
 				const LightComponent& l = *go->light;
 				j["light"] = {
-					{"type", (int)l.type},
-					{"color", Vec3(l.color)},
-					{"intensity", l.intensity},
-					{"direction", Vec3(l.direction)},
-					{"innerCutoff", l.innerCutoffDeg},
-					{"outerCutoff", l.outerCutoffDeg},
-					{"width", l.width},
-					{"height", l.height},
+					{"type", (int)l.type}, {"color", Vec3(l.color)}, {"intensity", l.intensity},
+					{"direction", Vec3(l.direction)}, {"innerCutoff", l.innerCutoffDeg},
+					{"outerCutoff", l.outerCutoffDeg}, {"width", l.width}, {"height", l.height},
 					{"enabled", l.enabled},
 				};
 			}
-
+			if (go->script)
+			{
+				j["script"] = { {"behavior", go->script->behaviorName}, {"enabled", go->script->enabled} };
+			}
 			arr.push_back(std::move(j));
 		}
 		root["objects"] = std::move(arr);
-
-		std::ofstream out(path);
-		if (!out)
-		{
-			if (error) *error = "cannot open file for writing: " + path;
-			return false;
-		}
-		out << root.dump(2);
-		return true;
+		return root;
 	}
 
-	bool Load(Scene& scene, const std::string& path,
-		AssetManager& assets, const PrimitiveLibrary& primitives, std::string* error)
+	// Rebuild the scene from a parsed JSON object. Returns false on structural error.
+	bool JsonToScene(Scene& scene, const json& root, AssetManager& assets,
+		const PrimitiveLibrary& primitives, std::string* error)
 	{
-		std::ifstream in(path);
-		if (!in)
-		{
-			if (error) *error = "cannot open file: " + path;
-			return false;
-		}
-
-		json root;
-		try { in >> root; }
-		catch (const std::exception& e)
-		{
-			if (error) *error = std::string("JSON parse error: ") + e.what();
-			return false;
-		}
-
 		if (!root.contains("objects") || !root["objects"].is_array())
 		{
 			if (error) *error = "missing 'objects' array";
@@ -129,7 +91,6 @@ namespace SceneIO
 		}
 
 		scene.Clear();
-
 		for (const json& j : root["objects"])
 		{
 			auto go = std::make_unique<GameObject>();
@@ -162,11 +123,8 @@ namespace SceneIO
 				{
 					mr.kind = MeshRenderer::Geometry::Model;
 					mr.model = assets.GetModel(mr.sourceId);
-					if (mr.model)
-					{
-						if (!m.contains("localMin")) mr.localMin = mr.model->BoundsMin();
-						if (!m.contains("localMax")) mr.localMax = mr.model->BoundsMax();
-					}
+					if (mr.model && !m.contains("localMin")) mr.localMin = mr.model->BoundsMin();
+					if (mr.model && !m.contains("localMax")) mr.localMax = mr.model->BoundsMax();
 				}
 				else
 				{
@@ -217,9 +175,53 @@ namespace SceneIO
 				go->light = lc;
 			}
 
+			if (j.contains("script"))
+			{
+				const json& s = j["script"];
+				ScriptComponent sc;
+				sc.behaviorName = s.value("behavior", std::string());
+				sc.enabled = s.value("enabled", true);
+				go->script = sc;
+			}
+
 			scene.Add(std::move(go)); // preserves the saved id, keeps nextId monotonic
 		}
-
 		return true;
+	}
+}
+
+namespace SceneIO
+{
+	bool Save(Scene& scene, const std::string& path, std::string* error)
+	{
+		std::ofstream out(path);
+		if (!out) { if (error) *error = "cannot open file for writing: " + path; return false; }
+		out << SceneToJson(scene).dump(2);
+		return true;
+	}
+
+	bool Load(Scene& scene, const std::string& path,
+		AssetManager& assets, const PrimitiveLibrary& primitives, std::string* error)
+	{
+		std::ifstream in(path);
+		if (!in) { if (error) *error = "cannot open file: " + path; return false; }
+		json root;
+		try { in >> root; }
+		catch (const std::exception& e) { if (error) *error = std::string("JSON parse error: ") + e.what(); return false; }
+		return JsonToScene(scene, root, assets, primitives, error);
+	}
+
+	std::string SaveToString(Scene& scene)
+	{
+		return SceneToJson(scene).dump();
+	}
+
+	bool LoadFromString(Scene& scene, const std::string& jsonStr,
+		AssetManager& assets, const PrimitiveLibrary& primitives, std::string* error)
+	{
+		json root;
+		try { root = json::parse(jsonStr); }
+		catch (const std::exception& e) { if (error) *error = std::string("JSON parse error: ") + e.what(); return false; }
+		return JsonToScene(scene, root, assets, primitives, error);
 	}
 }

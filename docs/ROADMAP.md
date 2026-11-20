@@ -79,6 +79,18 @@ See `plan.md` (repo root) for the full multi-tier engine roadmap. Tier 1:
 - Builds clean; normal run smoke-test clean. Editor interaction not visually verified.
 - **Next (Tier 2+)**: play/stop mode + scripting, input system, physics, shadow mapping — see `plan.md`.
 
+## Phase 9 — Game-engine Tier 2: play mode, input, scripting — ⏳ IN PROGRESS (2026-11-20)
+See `plan.md`. Done so far:
+- **Play/Stop mode** (`Editor` + `ScriptSystem`): snapshot scene to JSON on Play, run scripts,
+  restore on Stop; Play/Stop button in the menu bar.
+- **Input** (`Input.{h,cpp}`): edge-detected keys/buttons, mouse pos/delta, named axes.
+- **Native C++ scripting**: `ScriptBehavior` (`OnStart`/`OnUpdate`) + `ScriptRegistry`
+  (Rotator/FloatBob/WasdMover) + `ScriptSystem` (instances by object id). `ScriptComponent`
+  (behavior name) is serialized and editable in the Inspector. Demo spheres carry scripts.
+- Headless self-test runs the serializer round-trip + a script tick: **PASS**.
+- **Remaining in Tier 2**: event/messaging system, Lua scripting, Inspector-exposed script
+  params, gamepad input. (ECS deferred.)
+
 ## Phase 5 — Remaining / future (Low–Medium)
 - ✅ **PBR texture-mapped mesh**: the wooden chair (`Models/wooden_chair_ukipagtbw_high/`)
   renders with BaseColor/Normal/Roughness/AO maps (metallic=0) via `Model::DrawGeometry` +

@@ -12,6 +12,8 @@ struct GLFWwindow;
 class Scene;
 class Camera;
 class AssetManager;
+class Input;
+class ScriptSystem;
 
 // Per-frame render settings the Inspector/menus can tweak.
 struct RenderSettings
@@ -35,14 +37,17 @@ public:
 	enum class GizmoSpace { World, Local };
 
 	void Init(GLFWwindow* window, Camera* camera, const PrimitiveLibrary* primitives,
-		AssetManager* assets);
+		AssetManager* assets, Input* input, ScriptSystem* scripts);
 	void Shutdown();
 
 	void BeginFrame();                       // ImGui + ImGuizmo new frame
 	// Builds panels and handles all viewport interaction for this frame.
 	void BuildUI(Scene& scene, RenderSettings& settings,
 		const glm::mat4& view, const glm::mat4& proj, int fbW, int fbH, float dt);
+	void Update(Scene& scene, float dt);     // runs scripts while in Play mode
 	void EndFrame();                         // render draw data
+
+	bool IsPlaying() const { return isPlaying; }
 
 	// True while ImGui is using the mouse/keyboard (camera should ignore input).
 	bool WantCaptureMouse() const;
@@ -81,6 +86,10 @@ private:
 	void SaveScene(Scene& scene);
 	void LoadScene(Scene& scene);
 
+	// Play mode: snapshot the scene, run scripts, restore on stop.
+	void EnterPlayMode(Scene& scene);
+	void ExitPlayMode(Scene& scene);
+
 	// Inspector change tracking -> one undo command per interaction.
 	void TrackEdit(Scene& scene, GameObject* go, const char* label);
 
@@ -90,8 +99,13 @@ private:
 	Camera* camera = nullptr;
 	const PrimitiveLibrary* primitives = nullptr;
 	AssetManager* assets = nullptr;
+	Input* input = nullptr;
+	ScriptSystem* scripts = nullptr;
 	CommandHistory history;
 	std::string scenePath = "scene.json"; // default save/load path (cwd)
+
+	bool isPlaying = false;
+	std::string playSnapshot; // scene JSON captured on Play, restored on Stop
 
 	GizmoOp gizmoOp = GizmoOp::Translate;
 	GizmoSpace gizmoSpace = GizmoSpace::World;
