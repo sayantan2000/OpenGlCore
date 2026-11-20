@@ -47,6 +47,11 @@ organized into small RAII modules; `main.cpp` is just an entry point.
   (menu bar) enters/exits play mode: scripts run (the scene is snapshotted on Play and restored
   on Stop); add a **Script** component in the Inspector and pick a behavior (Rotator/FloatBob/
   WasdMover). Camera/tool input is ignored while over a panel or the gizmo.
+- **Cameras (Unity-style)**: the editor **scene camera** (RMB-fly) is used only in Edit mode;
+  **Play mode renders through the active in-scene game camera** (a `CameraComponent` on a
+  GameObject — Create → Camera; the default scene has a "Main Camera"). Editor overlays
+  (grid/gizmos/outline) are hidden in Play for a clean game view. Scripts can move the game
+  camera like any transform.
 
 ## Project layout & conventions
 - Sources live in purpose subfolders under `OpenGlCore/`: `core/` (Application, Window,
@@ -79,7 +84,10 @@ Entry: `core/main.cpp` → `ogl::Application` (owns window, scene, render loop).
 - `Model` — Assimp loader → `Mesh` list; `Draw`/`DrawPBR`/`DrawGeometry`.
 - `Text` — FreeType glyph renderer.
 - `Transform`/`GameObject`/`Scene` — lightweight scene model (TRS transform + optional
-  `MeshRenderer`/`LightComponent`; `std::optional` components, not an ECS). `GameObject` has a
+  `MeshRenderer`/`LightComponent`/`ScriptComponent`/`RigidBodyComponent`/`ColliderComponent`/
+  `CameraComponent`; `std::optional` components, not an ECS). `Scene::ActiveCamera()` returns the
+  game camera to render through in Play; `Application::UpdateActiveCamera` chooses scene vs game
+  camera per frame. `GameObject` has a
   stable `id` and a `parentId`; `Scene` selects/removes/finds by id and computes
   `WorldMatrix` = parentWorld * local (cycle-guarded) so transforms nest.
 - `AssetManager.{h,cpp}` — loads/caches textures & models **by path** (shared, no duplicate GPU
