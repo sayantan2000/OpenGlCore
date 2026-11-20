@@ -9,7 +9,8 @@ Quick map:
   conventions (11-float vertex layout, texture units), editor controls, hard rules, status.
 - **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — current implementation, module table,
   editor interaction (picking/gizmos/focus/shortcuts/undo) and the area-light approximation.
-- **[docs/DECISIONS.md](docs/DECISIONS.md)** — ADRs (ADR-0004 covers the scene editor).
+- **[docs/DECISIONS.md](docs/DECISIONS.md)** — ADRs (editor ADR-0004; PhysX + grid ADR-0007).
+- **[docs/PHYSICS.md](docs/PHYSICS.md)** — NVIDIA PhysX 5.5 integration, build, lifecycle, events.
 - **[docs/ROADMAP.md](docs/ROADMAP.md)** — done phases and remaining work.
 - **[docs/RENDERING_PIPELINE.md](docs/RENDERING_PIPELINE.md)** / **[docs/RESOURCE_MANAGEMENT.md](docs/RESOURCE_MANAGEMENT.md)**.
 
