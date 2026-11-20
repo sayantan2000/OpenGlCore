@@ -62,6 +62,47 @@ struct ScriptComponent
 	bool enabled = true;
 };
 
+// Physics material (friction / bounciness). Plain data; applied to a collider's PhysX shape.
+struct PhysicsMaterialDesc
+{
+	float staticFriction = 0.5f;
+	float dynamicFriction = 0.5f;
+	float restitution = 0.1f;
+};
+
+// Rigid-body component. Static = immovable; Dynamic = simulated; Kinematic = moved by script
+// but pushes dynamics. Values are applied to the PhysX actor when Play starts. Plain data so a
+// GameObject stays copyable/serializable (the live PhysX actor lives in the PhysicsScene).
+struct RigidBodyComponent
+{
+	enum class BodyType { Static, Dynamic, Kinematic };
+	BodyType type = BodyType::Dynamic;
+	float mass = 1.0f;
+	bool useGravity = true;
+	float linearDamping = 0.05f;
+	float angularDamping = 0.05f;
+	glm::vec3 initialLinearVelocity = glm::vec3(0.0f);
+	glm::vec3 initialAngularVelocity = glm::vec3(0.0f);
+	bool freezePosX = false, freezePosY = false, freezePosZ = false;
+	bool freezeRotX = false, freezeRotY = false, freezeRotZ = false;
+	bool enabled = true;
+};
+
+// Collider component. Primitive shapes use PhysX built-in geometry; mesh shapes are cooked
+// from the renderer geometry. `center` is a local offset from the object's origin.
+struct ColliderComponent
+{
+	enum class Shape { Box, Sphere, Capsule, Plane, ConvexMesh, TriangleMesh };
+	Shape shape = Shape::Box;
+	glm::vec3 center = glm::vec3(0.0f);
+	glm::vec3 halfExtents = glm::vec3(0.5f); // box
+	float radius = 0.5f;                      // sphere / capsule
+	float halfHeight = 0.5f;                  // capsule (cylinder half-height)
+	bool isTrigger = false;
+	PhysicsMaterialDesc material;
+	bool enabled = true;
+};
+
 // A scene object: a stable id, a name, an active flag, a transform, and optional
 // components. Kept deliberately simple (optional components, not a generic ECS) per the
 // project's scope. `id` is assigned by the Scene and stays constant for the object's
@@ -77,6 +118,8 @@ struct GameObject
 	std::optional<MeshRenderer> meshRenderer;
 	std::optional<LightComponent> light;
 	std::optional<ScriptComponent> script;
+	std::optional<RigidBodyComponent> rigidBody;
+	std::optional<ColliderComponent> collider;
 
 	// Short type label for the Inspector header.
 	const char* TypeLabel() const

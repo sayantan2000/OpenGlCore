@@ -45,6 +45,8 @@ main.cpp
 | `GameObject.h` | Scene object: name, active, `Transform`, optional components | `std::optional<MeshRenderer>` + `std::optional<LightComponent>` (no ECS). |
 | `Scene.h` | GameObject list + selection + hierarchy | Add/InsertAt/RemoveById/FindById by stable `id`; `WorldMatrix`/`SetParent` (cycle-guarded) for parent/child transforms; `Clear` for load. |
 | `AssetManager.{h,cpp}` | Texture/Model cache keyed by path | Shared GPU uploads; lets materials/meshes reference assets by path (serializable). |
+| `Physics.h` / `PhysicsScene.cpp` | NVIDIA PhysX 5.5 wrapper (pImpl) | Rigid bodies, colliders, materials, fixed-step sim, queries, contact/trigger events; see docs/PHYSICS.md. |
+| `PhysicsDebug.cpp` | Collider/trigger wireframes from component data | Works in edit + play; drawn via LineRenderer. |
 | `SceneIO.{h,cpp}` | JSON scene save/load | Round-trips ids/parents/transforms/materials/lights/scripts; resolves geometry+maps via PrimitiveLibrary/AssetManager; string variants for Play snapshots. |
 | `Input.{h,cpp}` | GLFW input abstraction | Edge-detected keys/buttons, mouse pos/delta, named axes; polled per frame. |
 | `ScriptBehavior.h`/`ScriptRegistry.{h,cpp}`/`ScriptSystem.{h,cpp}` | Native C++ scripting | `OnStart`/`OnUpdate` behaviors; name→factory registry (Rotator/FloatBob/WasdMover); live instances by id during Play. |
@@ -100,8 +102,17 @@ main.cpp
   a single `ModifyCommand`; discrete controls (checkbox/combo/reset) and create/duplicate/
   delete push their commands directly. Commands resolve objects by stable `id`, so references
   (shared meshes/materials/textures) stay valid across undo of deletion.
-- **Viewport aids**: a `LineRenderer` grid floor (XZ + coloured X/Z axes) marks the ground;
-  the selected object gets a **stencil outline** (the HDR target uses a `DEPTH24_STENCIL8`
+- **Physics (NVIDIA PhysX 5.5)**: see docs/PHYSICS.md. `RigidBodyComponent`/`ColliderComponent`
+  are plain data on `GameObject`; `PhysicsScene` (pImpl over PhysX) builds actors at Play start,
+  runs a fixed-timestep sim, writes dynamic poses back to transforms, and restores the scene on
+  Stop via the JSON snapshot. Collision/trigger events dispatch to `ScriptBehavior::OnCollision/
+  OnTrigger`; scripts get a `PhysicsScene*` for raycasts/forces. Debug wireframes via
+  `PhysicsDebug` (View → Physics Debug).
+- **Infinite grid**: `Application::RenderInfiniteGrid` draws a full-screen triangle; `grid.frag`
+  reconstructs the y=0 world position per pixel (ray-plane), draws fwidth-AA major/minor lines +
+  coloured axes with distance fade and writes `gl_FragDepth` so scene geometry occludes it. Grid
+  spacing (`RenderSettings`) also drives gizmo translation snapping.
+- **Viewport aids**: the selected object gets a **stencil outline** (the HDR target uses a `DEPTH24_STENCIL8`
   attachment — the selection writes stencil=1, then `RenderSelectionOutline` draws a
   normal-extruded shell where stencil≠1). Gizmos **snap** while Ctrl is held
   (ImGuizmo snap: 0.5u / 15° / 0.1). Camera nav: scroll-zoom, Alt+LMB orbit, MMB pan.

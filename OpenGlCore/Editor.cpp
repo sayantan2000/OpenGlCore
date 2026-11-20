@@ -8,6 +8,7 @@
 #include "SceneIO.h"
 #include "ScriptSystem.h"
 #include "ScriptRegistry.h"
+#include "Physics.h"
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -62,13 +63,14 @@ namespace
 // Lifecycle
 // ---------------------------------------------------------------------------------------
 void Editor::Init(GLFWwindow* window, Camera* cam, const PrimitiveLibrary* prims, AssetManager* am,
-	Input* in, ScriptSystem* ss)
+	Input* in, ScriptSystem* ss, PhysicsScene* ps)
 {
 	camera = cam;
 	primitives = prims;
 	assets = am;
 	input = in;
 	scripts = ss;
+	physics = ps;
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -115,8 +117,9 @@ void Editor::BuildUI(Scene& scene, RenderSettings& settings,
 {
 	fbWidth = fbW;
 	fbHeight = fbH;
+	gridSpacing = settings.gridSpacing; // so DrawGizmo can snap translation to the grid
 
-	DrawMainMenuBar(scene);
+	DrawMainMenuBar(scene, settings);
 
 	// Fixed layout computed from the display size (panels are non-movable / non-resizable).
 	const ImGuiViewport* vp = ImGui::GetMainViewport();
@@ -169,7 +172,7 @@ void Editor::BuildUI(Scene& scene, RenderSettings& settings,
 // ---------------------------------------------------------------------------------------
 // Menus (shared Create menu for both the main menu bar and the Hierarchy context menu)
 // ---------------------------------------------------------------------------------------
-void Editor::DrawMainMenuBar(Scene& scene)
+void Editor::DrawMainMenuBar(Scene& scene, RenderSettings& settings)
 {
 	if (!ImGui::BeginMainMenuBar()) return;
 
@@ -233,6 +236,14 @@ void Editor::DrawMainMenuBar(Scene& scene)
 		bool world = gizmoSpace == GizmoSpace::World;
 		if (ImGui::MenuItem("World Space", nullptr, world))  gizmoSpace = GizmoSpace::World;
 		if (ImGui::MenuItem("Local Space", nullptr, !world)) gizmoSpace = GizmoSpace::Local;
+		ImGui::EndMenu();
+	}
+
+	if (ImGui::BeginMenu("View"))
+	{
+		ImGui::MenuItem("Infinite Grid", nullptr, &settings.showGrid);
+		ImGui::MenuItem("Physics Debug", nullptr, &settings.showPhysicsDebug);
+		ImGui::DragFloat("Grid Spacing", &settings.gridSpacing, 0.05f, 0.05f, 100.0f);
 		ImGui::EndMenu();
 	}
 
@@ -406,6 +417,9 @@ void Editor::DrawInspector(Scene& scene, RenderSettings& settings)
 			ImGui::SliderFloat("Skybox Intensity", &settings.skyboxIntensity, 0.0f, 5.0f);
 			ImGui::Checkbox("Use IBL", &settings.useIBL);
 			ImGui::Checkbox("Show Skybox", &settings.showSkybox);
+			ImGui::Checkbox("Show Grid", &settings.showGrid);
+			ImGui::DragFloat("Grid Spacing", &settings.gridSpacing, 0.05f, 0.05f, 100.0f);
+			ImGui::Checkbox("Physics Debug", &settings.showPhysicsDebug);
 		}
 		return;
 	}
@@ -579,6 +593,69 @@ void Editor::DrawInspector(Scene& scene, RenderSettings& settings)
 			}
 		}
 	}
+	// Rigidbody
+	{
+		const char* kBodyTypes[] = { "Static", "Dynamic", "Kinematic" };
+		if (go->rigidBody)
+		{
+			if (ImGui::CollapsingHeader("Rigidbody", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				RigidBodyComponent& rb = *go->rigidBody;
+				int bt = (int)rb.type; GameObject beforeBt = *go;
+				if (ImGui::Combo("Body Type", &bt, kBodyTypes, IM_ARRAYSIZE(kBodyTypes)))
+				{ rb.type = (RigidBodyComponent::BodyType)bt; history.Push(std::make_unique<ModifyCommand>(go->id, beforeBt, *go, "Body Type")); }
+				ImGui::DragFloat("Mass", &rb.mass, 0.05f, 0.001f, 10000.0f); TrackEdit(scene, go, "Mass");
+				bool g = rb.useGravity; if (ImGui::Checkbox("Use Gravity", &g)) { GameObject b = *go; rb.useGravity = g; history.Push(std::make_unique<ModifyCommand>(go->id, b, *go, "Use Gravity")); }
+				ImGui::DragFloat("Linear Damping", &rb.linearDamping, 0.01f, 0.0f, 10.0f); TrackEdit(scene, go, "Linear Damping");
+				ImGui::DragFloat("Angular Damping", &rb.angularDamping, 0.01f, 0.0f, 10.0f); TrackEdit(scene, go, "Angular Damping");
+				ImGui::DragFloat3("Init Linear Vel", &rb.initialLinearVelocity.x, 0.05f); TrackEdit(scene, go, "Init Lin Vel");
+				ImGui::DragFloat3("Init Angular Vel", &rb.initialAngularVelocity.x, 0.05f); TrackEdit(scene, go, "Init Ang Vel");
+				GameObject bf = *go; bool ch = false;
+				bool px = rb.freezePosX, py = rb.freezePosY, pz = rb.freezePosZ;
+				bool rx = rb.freezeRotX, ry = rb.freezeRotY, rz = rb.freezeRotZ;
+				ImGui::TextDisabled("Freeze Pos"); ImGui::SameLine();
+				ImGui::Checkbox("X##fp", &px); ImGui::SameLine(); ImGui::Checkbox("Y##fp", &py); ImGui::SameLine(); ImGui::Checkbox("Z##fp", &pz);
+				ImGui::TextDisabled("Freeze Rot"); ImGui::SameLine();
+				ImGui::Checkbox("X##fr", &rx); ImGui::SameLine(); ImGui::Checkbox("Y##fr", &ry); ImGui::SameLine(); ImGui::Checkbox("Z##fr", &rz);
+				if (px != rb.freezePosX || py != rb.freezePosY || pz != rb.freezePosZ || rx != rb.freezeRotX || ry != rb.freezeRotY || rz != rb.freezeRotZ)
+				{ rb.freezePosX = px; rb.freezePosY = py; rb.freezePosZ = pz; rb.freezeRotX = rx; rb.freezeRotY = ry; rb.freezeRotZ = rz; ch = true; }
+				if (ch) history.Push(std::make_unique<ModifyCommand>(go->id, bf, *go, "Constraints"));
+				if (ImGui::Button("Remove Rigidbody")) { GameObject b = *go; go->rigidBody.reset(); history.Push(std::make_unique<ModifyCommand>(go->id, b, *go, "Remove Rigidbody")); }
+			}
+		}
+		else if (ImGui::Button("Add Rigidbody"))
+		{ GameObject b = *go; go->rigidBody = RigidBodyComponent{}; history.Push(std::make_unique<ModifyCommand>(go->id, b, *go, "Add Rigidbody")); }
+	}
+
+	// Collider
+	{
+		const char* kShapes[] = { "Box", "Sphere", "Capsule", "Plane", "Convex Mesh", "Triangle Mesh" };
+		if (go->collider)
+		{
+			if (ImGui::CollapsingHeader("Collider", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				ColliderComponent& co = *go->collider;
+				int sh = (int)co.shape; GameObject beforeSh = *go;
+				if (ImGui::Combo("Shape", &sh, kShapes, IM_ARRAYSIZE(kShapes)))
+				{ co.shape = (ColliderComponent::Shape)sh; history.Push(std::make_unique<ModifyCommand>(go->id, beforeSh, *go, "Collider Shape")); }
+				ImGui::DragFloat3("Center", &co.center.x, 0.02f); TrackEdit(scene, go, "Collider Center");
+				if (co.shape == ColliderComponent::Shape::Box)
+				{ ImGui::DragFloat3("Half Extents", &co.halfExtents.x, 0.02f, 0.001f, 1000.0f); TrackEdit(scene, go, "Half Extents"); }
+				if (co.shape == ColliderComponent::Shape::Sphere || co.shape == ColliderComponent::Shape::Capsule)
+				{ ImGui::DragFloat("Radius", &co.radius, 0.02f, 0.001f, 1000.0f); TrackEdit(scene, go, "Radius"); }
+				if (co.shape == ColliderComponent::Shape::Capsule)
+				{ ImGui::DragFloat("Half Height", &co.halfHeight, 0.02f, 0.001f, 1000.0f); TrackEdit(scene, go, "Half Height"); }
+				bool tr = co.isTrigger; if (ImGui::Checkbox("Is Trigger", &tr)) { GameObject b = *go; co.isTrigger = tr; history.Push(std::make_unique<ModifyCommand>(go->id, b, *go, "Trigger")); }
+				ImGui::SeparatorText("Physics Material");
+				ImGui::DragFloat("Static Friction", &co.material.staticFriction, 0.01f, 0.0f, 2.0f); TrackEdit(scene, go, "Static Friction");
+				ImGui::DragFloat("Dynamic Friction", &co.material.dynamicFriction, 0.01f, 0.0f, 2.0f); TrackEdit(scene, go, "Dynamic Friction");
+				ImGui::DragFloat("Restitution", &co.material.restitution, 0.01f, 0.0f, 1.0f); TrackEdit(scene, go, "Restitution");
+				if (ImGui::Button("Remove Collider")) { GameObject b = *go; go->collider.reset(); history.Push(std::make_unique<ModifyCommand>(go->id, b, *go, "Remove Collider")); }
+			}
+		}
+		else if (ImGui::Button("Add Collider"))
+		{ GameObject b = *go; go->collider = ColliderComponent{}; history.Push(std::make_unique<ModifyCommand>(go->id, b, *go, "Add Collider")); }
+	}
 }
 
 void Editor::DrawConsole(const RenderSettings& settings)
@@ -748,8 +825,9 @@ void Editor::DrawGizmo(Scene& scene, const glm::mat4& view, const glm::mat4& pro
 
 	// Manipulate the WORLD matrix, then convert back to a local transform relative to the
 	// parent so hierarchy transforms stay correct.
-	// Hold Ctrl to snap (translate 0.5u, rotate 15 deg, scale 0.1).
-	float snapVals[3] = { 0.5f, 0.5f, 0.5f };
+	// Hold Ctrl to snap: translate to the grid spacing, rotate 15 deg, scale 0.1.
+	float snapT = gridSpacing > 0.0f ? gridSpacing : 1.0f;
+	float snapVals[3] = { snapT, snapT, snapT };
 	if (gizmoOp == GizmoOp::Rotate) snapVals[0] = snapVals[1] = snapVals[2] = 15.0f;
 	else if (gizmoOp == GizmoOp::Scale) snapVals[0] = snapVals[1] = snapVals[2] = 0.1f;
 	const float* snap = ImGui::GetIO().KeyCtrl ? snapVals : nullptr;
@@ -981,15 +1059,17 @@ void Editor::EnterPlayMode(Scene& scene)
 {
 	if (isPlaying || !scripts || !input) return;
 	playSnapshot = SceneIO::SaveToString(scene); // capture edit-time state
-	scripts->Begin(scene, *input, 0.0f);
+	if (physics) physics->Begin(scene);
+	scripts->Begin(scene, *input, physics, 0.0f);
 	isPlaying = true;
-	Log("Play: entered play mode (scene snapshot saved).");
+	Log(std::string("Play: entered play mode") + (physics && physics->Available() ? " (PhysX active)." : "."));
 }
 
 void Editor::ExitPlayMode(Scene& scene)
 {
 	if (!isPlaying) return;
 	if (scripts) scripts->End();
+	if (physics) physics->End();
 	if (assets && primitives && !playSnapshot.empty())
 	{
 		std::string err;
@@ -1003,8 +1083,10 @@ void Editor::ExitPlayMode(Scene& scene)
 
 void Editor::Update(Scene& scene, float dt)
 {
-	if (isPlaying && scripts && input)
-		scripts->Update(scene, *input, dt);
+	if (!isPlaying || !scripts || !input) return;
+	scripts->Update(scene, *input, physics, dt);        // scripts set velocities / kinematics
+	if (physics) physics->Step(scene, dt);              // simulate + write transforms back
+	scripts->DispatchPhysicsEvents(scene, *input, physics, dt); // OnCollision / OnTrigger
 }
 
 // ---------------------------------------------------------------------------------------

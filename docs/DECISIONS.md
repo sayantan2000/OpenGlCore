@@ -148,6 +148,35 @@
   the behavior name); no gamepad; no event/messaging system yet; objects spawned during Play
   get no script instance until the next Play.
 
+## ADR-0007 — Tier 3: NVIDIA PhysX + procedural infinite grid (2026-11-21)
+- **Context**: Add 3D physics (mandated NVIDIA PhysX, not Jolt/Bullet) and a Unity-style
+  camera-independent infinite grid.
+- **Decisions**:
+  - **PhysX 5.5 via vcpkg** (`"physx"` in the manifest) rather than building the Omniverse repo
+    from source: it IS the official NVIDIA SDK (latest stable 5.5.0), matches the project's
+    existing vcpkg flow, handles the libs/DLLs, and keeps binaries out of git. See docs/PHYSICS.md.
+  - **Physics as plain-data components + a wrapper** (`PhysicsScene` pImpl hiding all PhysX
+    headers). `RigidBodyComponent`/`ColliderComponent`/`PhysicsMaterialDesc` stay copyable and
+    serializable; live PhysX actors are keyed by object id in the wrapper. This preserves undo
+    snapshots and JSON save/load and keeps PhysX out of the rest of the codebase.
+  - **Play-mode owns simulation**, reusing the Tier-2 JSON snapshot: Begin builds actors, fixed
+    sub-steps simulate, dynamic poses write back to transforms (world→local), Stop restores the
+    snapshot. Kinematic bodies are driven by the transform; statics never move; rendering always
+    reads the transform so the two never fight.
+  - **Events → scripting**: custom filter shader + `PxSimulationEventCallback` collect contacts/
+    triggers; `ScriptSystem` dispatches `OnCollision`/`OnTrigger`; `ScriptContext` exposes the
+    `PhysicsScene` for raycasts/forces. No separate event bus yet (deferred Tier-2 item).
+  - **Infinite grid is a procedural shader**, not a big mesh: a full-screen triangle reconstructs
+    the y=0 world position per pixel (`grid.vert/frag`), draws fwidth-AA major/minor lines +
+    coloured axes with distance fade and correct `gl_FragDepth`. Grid spacing also drives gizmo
+    translation snapping.
+  - **Debug viz from component data** (not PhysX's debug buffer) so it works in edit mode too.
+- **Status**: Accepted and implemented. Debug|x64 builds; headless self-test **PASS** — scene
+  save/reload with physics components, a script tick, and a dynamic sphere dropping from y=4 to
+  rest at y≈-0.45 on the ground. Visual/interaction not verified (no display).
+- **Known limitations**: convex/triangle mesh colliders fall back to a box (cooking needs
+  retained vertex data — deferred); no character controller / joints / CCD.
+
 ## Pre-existing decisions (reconstructed from the code — not formally recorded before)
 These describe why the project looks the way it does; confirm/revise with the maintainer.
 

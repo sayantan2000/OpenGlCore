@@ -19,6 +19,7 @@
 #include "AssetManager.h"
 #include "Input.h"
 #include "ScriptSystem.h"
+#include "Physics.h"
 #include "shaderClass.h"
 #include <vector>
 
@@ -43,6 +44,8 @@ private:
 	void RenderSceneHDR();     // iterate the Scene into the HDR framebuffer + skybox
 	void RenderLightGizmos();  // wireframe overlays for lights (incl. rectangle area lights)
 	void RenderSelectionOutline(); // stencil silhouette around the selected object
+	void RenderInfiniteGrid();     // procedural ground-plane grid (shader, no mesh)
+	void RenderPhysicsDebug();     // collider wireframes (component-based)
 	void TonemapToScreen();    // HDR -> default framebuffer (ACES + gamma)
 	LightSet GatherLights();   // build a LightSet from the scene's light objects
 
@@ -52,6 +55,7 @@ private:
 	std::unique_ptr<Shader> pbrShader;
 	std::unique_ptr<Shader> hdrShader;
 	std::unique_ptr<Shader> outlineShader; // selection silhouette
+	std::unique_ptr<Shader> gridShader;    // procedural infinite grid
 	std::unique_ptr<IBL>    ibl;
 	std::unique_ptr<Text>   hud;
 
@@ -65,6 +69,7 @@ private:
 
 	Input input;               // keyboard/mouse abstraction (polled each frame)
 	ScriptSystem scripts;      // runs script behaviors during Play mode
+	std::unique_ptr<PhysicsScene> physics; // NVIDIA PhysX simulation (Play mode)
 
 	std::unique_ptr<Scene> scene;
 	Editor editor;

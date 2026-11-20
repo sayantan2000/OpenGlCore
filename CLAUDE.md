@@ -17,8 +17,9 @@ has a textured wooden chair, two spheres, and directional/point/spot lights. The
 organized into small RAII modules; `main.cpp` is just an entry point.
 
 ## Build & run
-- **Prerequisite (once)**: restore vcpkg deps (**Assimp**, **Dear ImGui** w/ glfw+opengl3
-  bindings & docking, which pulls in **GLFW 3.4**) from the repo root:
+- **Prerequisite (once)**: restore vcpkg deps (**Assimp**, **NVIDIA PhysX 5.5**, **Dear ImGui**
+  w/ glfw+opengl3 bindings & docking, which pulls in **GLFW 3.4**) from the repo root
+  (PhysX's first build is long):
   `& "C:\Program Files\Microsoft Visual Studio\18\Community\VC\vcpkg\vcpkg.exe" install --triplet x64-windows` → populates `vcpkg_installed/` (gitignored). FreeType is vendored.
   Note: GLFW is now linked from **vcpkg** (`glfw3dll.lib` + `glfw3.dll`) so the ImGui GLFW
   backend matches; the vendored `Libraries/lib/glfw3.lib` (3.3) is no longer linked.
@@ -92,6 +93,12 @@ Entry: `main.cpp` → `Application` (owns window, scene, render loop). Modules:
 - `LineRenderer` — immediate-mode line overlay for light gizmos, rectangle-light outlines and
   the selection AABB (`line.vert`/`line.frag`).
 - `ImGuizmo` — vendored gizmo library at `Libraries/source/ImGuizmo` (compiled into the project).
+- `Physics.h`/`PhysicsScene.cpp` — **NVIDIA PhysX 5.5** (vcpkg) wrapped behind a pImpl:
+  Static/Dynamic/Kinematic rigid bodies, Box/Sphere/Capsule/Plane colliders, physics materials,
+  fixed-timestep sim with transform write-back, raycast/sphere-cast/overlap, contact/trigger
+  events. `RigidBodyComponent`/`ColliderComponent` are plain data on `GameObject` (serializable,
+  undoable). Play-mode drives it; Stop restores the JSON snapshot. See **docs/PHYSICS.md**.
+- `PhysicsDebug.cpp` — collider/trigger wireframes from component data (View → Physics Debug).
 
 ## Shaders (OpenGlCore/Shader/)
 - `pbr.vert`/`pbr.frag` — main PBR (Cook-Torrance GGX/Smith/Schlick, maps, lights incl. a
@@ -101,6 +108,7 @@ Entry: `main.cpp` → `Application` (owns window, scene, render loop). Modules:
   `background.vert`/`background.frag`.
 - `line.vert`/`line.frag` — editor line overlay (grid floor, light gizmos, rect-light outline).
 - `outline.vert`/`outline.frag` — stencil selection silhouette (normal-extruded shell).
+- `grid.vert`/`grid.frag` — procedural infinite ground grid (ray-to-plane, fwidth AA, fade, depth).
 - Legacy (still present, used by `Model::Draw` and older demos): `default.*`, `Light.*`,
   `albedo.frag`, `text.*`.
 
@@ -130,21 +138,24 @@ Entry: `main.cpp` → `Application` (owns window, scene, render loop). Modules:
   path), **JSON scene serialization** (Ctrl+S/Ctrl+O), and **parent/child transform
   hierarchy** (drag-reparent; world matrices everywhere), plus **Tier 2 (in progress)**:
   **Play/Stop mode**, an **Input** system, and native **C++ scripting** (`ScriptBehavior` /
-  `ScriptRegistry` / `ScriptSystem`). Debug|x64 builds; runtime smoke test clean; serialization
-  + script round-trip verified headlessly (`OGL_SCENE_SELFTEST`). **Editor interaction and
-  visual output were NOT verified in this environment (no display).**
-- See `plan.md` for the full engine roadmap (Tier 1 done; Tier 2 in progress; Tiers 3–6 next).
+  `ScriptRegistry` / `ScriptSystem`), and **Tier 3 (in progress)**: **NVIDIA PhysX 5.5** physics
+  (rigid bodies, colliders, materials, queries, collision/trigger → scripts, Play-mode sim) and a
+  **procedural infinite grid** + gizmo snapping/outline. Debug|x64 builds; headless self-test
+  (`OGL_SCENE_SELFTEST`) PASS — scene save/reload (incl. physics), a script tick, and a dynamic
+  sphere dropping to rest on the ground. **Editor interaction and visual output were NOT verified
+  in this environment (no display).**
+- See `plan.md` for the full engine roadmap (Tier 1 done; Tiers 2–3 in progress; Tiers 4–6 next).
 
 ## Known issues / remaining tasks (see docs/ROADMAP.md)
 - PBR texture maps are exercised by the wooden chair (BaseColor/Normal/Roughness/AO);
   the metallic-map path is still untested (no metal asset).
 - IBL supports a real equirectangular `.hdr` (`Images/environment.hdr`) with a procedural
   sky fallback when the file is absent.
-- No framebuffer-resize handling (fixed size from the initial window).
 - `Model` has no normal/metallic/roughness map import (diffuse color/texture only).
 - Legacy shaders/classes (`default.*`, `Light.*`, `Primitive`, `Texture`) remain but are
   no longer used by the main scene; candidates for removal.
-- Editor: no **scene serialization** yet (Ctrl+S logs a notice); the rectangle light is a
-  representative-point approximation, not full LTC; gizmo rotation round-trips through Euler
-  angles so very large rotations may drift slightly; selection highlight is an AABB, not a
-  mesh outline. See docs/ROADMAP.md and ADR-0004.
+- Physics: **convex/triangle mesh colliders** fall back to a box (cooking deferred — needs
+  retained vertex data); no character controller / joints / CCD. See docs/PHYSICS.md.
+- The rectangle light is a representative-point approximation, not full LTC; gizmo rotation
+  round-trips through Euler angles so very large rotations may drift slightly.
+- Tier-2 leftovers: event/messaging bus, Lua scripting, gamepad. Editor: multi-select, prefabs.

@@ -26,6 +26,7 @@ Application::Application()
 	pbrShader = std::make_unique<Shader>("./Shader/pbr.vert", "./Shader/pbr.frag");
 	hdrShader = std::make_unique<Shader>("./Shader/hdr.vert", "./Shader/hdr.frag");
 	outlineShader = std::make_unique<Shader>("./Shader/outline.vert", "./Shader/outline.frag");
+	gridShader = std::make_unique<Shader>("./Shader/grid.vert", "./Shader/grid.frag");
 	ibl = std::make_unique<IBL>("./SKYBOX/ballroom_4k.exr");
 	hud = std::make_unique<Text>("./Fonts/arial.ttf", 48, fbWidth, fbHeight);
 
@@ -34,6 +35,7 @@ Application::Application()
 
 	assets = std::make_unique<AssetManager>();
 	lines = std::make_unique<LineRenderer>();
+	physics = std::make_unique<PhysicsScene>();
 	input.Init(window.Handle());
 	ScriptRegistry::RegisterBuiltins();
 	BuildPrimitiveLibrary();
@@ -46,7 +48,8 @@ Application::Application()
 	scene = std::make_unique<Scene>();
 	BuildScene();
 
-	editor.Init(window.Handle(), camera.get(), &primitives, assets.get(), &input, &scripts);
+	editor.Init(window.Handle(), camera.get(), &primitives, assets.get(), &input, &scripts, physics.get());
+	editor.Log(std::string("Physics: ") + (physics->Available() ? "NVIDIA PhysX ready" : "PhysX unavailable"));
 	editor.Log(std::string("IBL source: ") + (ibl->UsingHDRI() ? "HDRI (ballroom_4k.exr)" : "procedural sky"));
 	editor.Log("Scene loaded: " + std::to_string(scene->Count()) + " objects.");
 
@@ -117,11 +120,57 @@ void Application::BuildScene()
 		mr.localMax = sphereDef.localMax;
 		go->meshRenderer = mr;
 		if (scriptName) { ScriptComponent sc; sc.behaviorName = scriptName; go->script = sc; }
+		// Physics: a dynamic rigid body with a sphere collider (drops onto the ground on Play).
+		ColliderComponent co; co.shape = ColliderComponent::Shape::Sphere; co.radius = 1.0f;
+		co.material.restitution = 0.4f;
+		go->collider = co;
+		RigidBodyComponent rb; rb.type = RigidBodyComponent::BodyType::Dynamic; rb.mass = 1.0f;
+		go->rigidBody = rb;
 		scene->Add(std::move(go));
 	};
-	// Scripts demonstrate Play mode: one spins, one bobs (press Play; Stop restores state).
-	makeSphere("Metal Sphere", glm::vec3(-4.5f, 0.0f, 0.0f), glm::vec3(0.95f, 0.75f, 0.35f), 1.0f, 0.2f, "Rotator");
-	makeSphere("Plastic Sphere", glm::vec3(4.5f, 0.0f, 0.0f), glm::vec3(0.1f, 0.4f, 0.85f), 0.0f, 0.4f, "FloatBob");
+	// On Play the spheres fall under gravity onto the ground and bounce (PhysX).
+	makeSphere("Metal Sphere", glm::vec3(-4.5f, 4.0f, 0.0f), glm::vec3(0.95f, 0.75f, 0.35f), 1.0f, 0.2f, nullptr);
+	makeSphere("Plastic Sphere", glm::vec3(4.5f, 6.0f, 0.0f), glm::vec3(0.1f, 0.4f, 0.85f), 0.0f, 0.4f, nullptr);
+
+	// --- Ground plane (static collider) ---
+	{
+		const PrimitiveDef& planeDef = primitives.Get(PrimitiveType::Plane);
+		auto go = std::make_unique<GameObject>();
+		go->name = "Ground";
+		go->transform.position = glm::vec3(0.0f, -2.0f, 0.0f);
+		go->transform.scale = glm::vec3(20.0f, 1.0f, 20.0f);
+		MeshRenderer mr;
+		mr.kind = MeshRenderer::Geometry::Mesh;
+		mr.mesh = planeDef.mesh;
+		mr.sourceId = planeDef.name;
+		mr.meshName = "Plane";
+		mr.materialName = "Ground";
+		mr.material.albedo = glm::vec3(0.35f);
+		mr.material.roughness = 0.9f;
+		mr.localMin = planeDef.localMin;
+		mr.localMax = planeDef.localMax;
+		go->meshRenderer = mr;
+		ColliderComponent co; co.shape = ColliderComponent::Shape::Box;
+		co.halfExtents = glm::vec3(1.0f, 0.05f, 1.0f); // * object scale -> 20 x 1 x 20 in PhysX
+		go->collider = co; // no rigidBody -> static
+		scene->Add(std::move(go));
+	}
+
+	// --- Scripted (non-physics) cube: spins on Play to demonstrate scripting alongside physics ---
+	{
+		const PrimitiveDef& cubeDef = primitives.Get(PrimitiveType::Cube);
+		auto go = std::make_unique<GameObject>();
+		go->name = "Spinner Cube";
+		go->transform.position = glm::vec3(0.0f, 1.0f, -3.0f);
+		MeshRenderer mr;
+		mr.kind = MeshRenderer::Geometry::Mesh;
+		mr.mesh = cubeDef.mesh; mr.sourceId = cubeDef.name; mr.meshName = "Cube"; mr.materialName = "Default";
+		mr.material.albedo = glm::vec3(0.6f, 0.2f, 0.7f); mr.material.roughness = 0.4f;
+		mr.localMin = cubeDef.localMin; mr.localMax = cubeDef.localMax;
+		go->meshRenderer = mr;
+		ScriptComponent sc; sc.behaviorName = "Rotator"; go->script = sc;
+		scene->Add(std::move(go));
+	}
 
 	// --- Lights as scene objects ---
 	auto makeLight = [&](const char* name, LightComponent::Type type, glm::vec3 pos,
@@ -329,6 +378,8 @@ void Application::RenderSceneHDR()
 	glDisable(GL_STENCIL_TEST);
 	glStencilMask(0xFF); // restore so the next frame's clear works
 
+	RenderInfiniteGrid();
+	RenderPhysicsDebug();
 	RenderLightGizmos();
 
 	if (settings.showSkybox)
@@ -343,23 +394,6 @@ void Application::RenderSceneHDR()
 void Application::RenderLightGizmos()
 {
 	const glm::mat4 viewProj = camera->cameraMatrix; // proj * view (updated this frame)
-
-	// Editor grid floor on the XZ plane (grey lines + coloured X/Z axes).
-	{
-		const int half = 20;      // grid half-extent in units
-		const float e = (float)half;
-		for (int i = -half; i <= half; ++i)
-		{
-			if (i == 0) continue; // the axes are drawn coloured below
-			lines->AddLine(glm::vec3(-e, 0.0f, (float)i), glm::vec3(e, 0.0f, (float)i));
-			lines->AddLine(glm::vec3((float)i, 0.0f, -e), glm::vec3((float)i, 0.0f, e));
-		}
-		lines->Flush(viewProj, glm::vec3(0.30f, 0.30f, 0.34f));
-		lines->AddLine(glm::vec3(-e, 0.0f, 0.0f), glm::vec3(e, 0.0f, 0.0f));
-		lines->Flush(viewProj, glm::vec3(0.65f, 0.25f, 0.25f)); // X axis
-		lines->AddLine(glm::vec3(0.0f, 0.0f, -e), glm::vec3(0.0f, 0.0f, e));
-		lines->Flush(viewProj, glm::vec3(0.25f, 0.35f, 0.65f)); // Z axis
-	}
 
 	// Light wireframes (yellow).
 	for (auto& go : scene->Objects())
@@ -436,6 +470,59 @@ void Application::RenderSelectionOutline()
 	glEnable(GL_DEPTH_TEST);
 }
 
+void Application::RenderInfiniteGrid()
+{
+	if (!settings.showGrid) return;
+
+	// A procedural, camera-independent ground grid: a full-screen triangle whose fragments
+	// reconstruct the world position on the y=0 plane (see grid.vert/frag). Depth is written so
+	// scene geometry occludes it; alpha-blended with distance fade to avoid a hard boundary.
+	glm::mat4 vp = camera->cameraMatrix;
+	glm::mat4 inv = glm::inverse(vp);
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(GL_TRUE);
+
+	gridShader->Activate();
+	glUniformMatrix4fv(glGetUniformLocation(gridShader->ID, "u_invViewProj"), 1, GL_FALSE, glm::value_ptr(inv));
+	glUniformMatrix4fv(glGetUniformLocation(gridShader->ID, "u_viewProj"), 1, GL_FALSE, glm::value_ptr(vp));
+	glUniform3fv(glGetUniformLocation(gridShader->ID, "u_camPos"), 1, glm::value_ptr(camera->Position));
+	float spacing = settings.gridSpacing > 0.0f ? settings.gridSpacing : 1.0f;
+	glUniform1f(glGetUniformLocation(gridShader->ID, "u_spacing"), spacing);
+	// Fade relative to how high the camera is, so the grid stays stable while flying.
+	float h = glm::max(std::abs(camera->Position.y), 1.0f);
+	glUniform1f(glGetUniformLocation(gridShader->ID, "u_fadeStart"), h * 4.0f + 20.0f);
+	glUniform1f(glGetUniformLocation(gridShader->ID, "u_fadeEnd"), h * 20.0f + 120.0f);
+
+	glBindVertexArray(emptyVAO);
+	glDrawArrays(GL_TRIANGLES, 0, 3);
+	glBindVertexArray(0);
+
+	glDisable(GL_BLEND);
+}
+
+void Application::RenderPhysicsDebug()
+{
+	if (!settings.showPhysicsDebug) return;
+	std::vector<DebugLine> dl;
+	PhysicsDebug::BuildColliderLines(*scene, dl);
+	if (dl.empty()) return;
+
+	// Group by colour so each flush is one draw (collider green vs trigger blue).
+	const glm::mat4 viewProj = camera->cameraMatrix;
+	auto flushColor = [&](const glm::vec3& c)
+	{
+		bool any = false;
+		for (const DebugLine& l : dl)
+			if (l.color == c) { lines->AddLine(l.a, l.b); any = true; }
+		if (any) lines->Flush(viewProj, c, 1.5f);
+	};
+	flushColor(glm::vec3(0.2f, 0.9f, 0.4f)); // colliders
+	flushColor(glm::vec3(0.2f, 0.7f, 1.0f)); // triggers
+}
+
 void Application::TonemapToScreen()
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -495,8 +582,8 @@ void Application::Run()
 			if (spin)
 			{
 				float y0 = spin->transform.rotationEuler.y;
-				scripts.Begin(reloaded, input, 0.016f);
-				for (int i = 0; i < 10; ++i) scripts.Update(reloaded, input, 0.016f);
+				scripts.Begin(reloaded, input, physics.get(), 0.016f);
+				for (int i = 0; i < 10; ++i) scripts.Update(reloaded, input, physics.get(), 0.016f);
 				scripts.End();
 				scriptsOk = (spin->transform.rotationEuler.y != y0);
 				std::cout << "[SELFTEST] script Rotator dy=" << (spin->transform.rotationEuler.y - y0)
@@ -505,8 +592,29 @@ void Application::Run()
 			else std::cout << "[SELFTEST] (no Rotator-scripted object found)" << std::endl;
 		}
 
+		// Exercise PhysX headlessly: drop a dynamic sphere and confirm it falls and settles.
+		bool physicsOk = false;
+		if (loaded && physics && physics->Available())
+		{
+			GameObject* ball = nullptr;
+			for (auto& o : reloaded.Objects())
+				if (o->rigidBody && o->rigidBody->type == RigidBodyComponent::BodyType::Dynamic) { ball = o.get(); break; }
+			if (ball)
+			{
+				float y0 = ball->transform.position.y;
+				physics->Begin(reloaded);
+				for (int i = 0; i < 120; ++i) physics->Step(reloaded, 1.0f / 60.0f); // ~2s
+				float y1 = ball->transform.position.y;
+				physics->End();
+				physicsOk = (y1 < y0 - 0.5f) && (y1 > -5.0f); // fell, but landed on the ground
+				std::cout << "[SELFTEST] PhysX drop y0=" << y0 << " y1=" << y1
+					<< " available=" << physics->Available() << std::endl;
+			}
+		}
+		else std::cout << "[SELFTEST] PhysX unavailable" << std::endl;
+
 		std::cout << "[SELFTEST] "
-			<< ((saved && loaded && reloaded.Count() == before && scriptsOk) ? "PASS" : "FAIL") << std::endl;
+			<< ((saved && loaded && reloaded.Count() == before && scriptsOk && physicsOk) ? "PASS" : "FAIL") << std::endl;
 		return;
 	}
 

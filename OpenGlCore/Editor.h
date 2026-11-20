@@ -14,6 +14,7 @@ class Camera;
 class AssetManager;
 class Input;
 class ScriptSystem;
+class PhysicsScene;
 
 // Per-frame render settings the Inspector/menus can tweak.
 struct RenderSettings
@@ -22,6 +23,9 @@ struct RenderSettings
 	float skyboxIntensity = 1.0f;
 	bool  useIBL = true;
 	bool  showSkybox = true;
+	bool  showGrid = true;        // procedural infinite grid
+	float gridSpacing = 1.0f;     // minor cell size; also used for gizmo snap
+	bool  showPhysicsDebug = true; // collider/physics wireframes in the Scene View
 	float fps = 0.0f;
 };
 
@@ -37,7 +41,7 @@ public:
 	enum class GizmoSpace { World, Local };
 
 	void Init(GLFWwindow* window, Camera* camera, const PrimitiveLibrary* primitives,
-		AssetManager* assets, Input* input, ScriptSystem* scripts);
+		AssetManager* assets, Input* input, ScriptSystem* scripts, PhysicsScene* physics);
 	void Shutdown();
 
 	void BeginFrame();                       // ImGui + ImGuizmo new frame
@@ -59,7 +63,7 @@ public:
 
 private:
 	// Panels
-	void DrawMainMenuBar(Scene& scene);
+	void DrawMainMenuBar(Scene& scene, RenderSettings& settings);
 	void DrawHierarchy(Scene& scene);
 	void DrawHierarchyNode(Scene& scene, GameObject* go);
 	void Reparent(Scene& scene, std::uint32_t childId, std::uint32_t parentId);
@@ -102,6 +106,7 @@ private:
 	AssetManager* assets = nullptr;
 	Input* input = nullptr;
 	ScriptSystem* scripts = nullptr;
+	PhysicsScene* physics = nullptr;
 	CommandHistory history;
 	std::string scenePath = "scene.json"; // default save/load path (cwd)
 
@@ -111,6 +116,7 @@ private:
 	GizmoOp gizmoOp = GizmoOp::Translate;
 	GizmoSpace gizmoSpace = GizmoSpace::World;
 	bool showHistoryPanel = false;
+	float gridSpacing = 1.0f; // mirrored from RenderSettings so the gizmo can snap to the grid
 
 	// Layout (computed each frame from the display size).
 	glm::vec4 viewportRect = glm::vec4(0.0f); // x, y, w, h (pixels)

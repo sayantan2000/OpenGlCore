@@ -39,9 +39,19 @@ Make what already exists persistent and composable. Highest return, low risk.
       behaviors read them via `GetParam`.
 - [ ] *(Next)* Lua scripting, gamepad input.
 
-## Tier 3 — Physics & spatial systems
-- [ ] **Physics** (Jolt or Bullet) — rigid bodies, colliders, raycasts (reuse the editor ray math).
-- [ ] **Collision / trigger callbacks** feeding the scripting/event layer.
+## Tier 3 — Physics & spatial systems  ⏳ IN PROGRESS
+- [x] **Physics — NVIDIA PhysX 5.5** (via vcpkg): `PhysicsScene` wraps PhysX behind a pImpl.
+      Static/Dynamic/Kinematic rigid bodies; Box/Sphere/Capsule/Plane colliders; physics
+      materials (friction/restitution); mass/gravity/damping/constraints (lock flags);
+      fixed-timestep simulation with transform write-back; Play-mode start/stop with JSON
+      snapshot restore. Raycast / sphere cast / overlap queries. Collision + trigger callbacks.
+- [x] **Collision / trigger callbacks** → scripting: `ScriptBehavior::OnCollision/OnTrigger`,
+      dispatched by `ScriptSystem` from `PhysicsScene::Events()`. Scripts also get a
+      `PhysicsScene*` in their context (raycast, set velocity, add force/impulse).
+- [x] **Physics debug visualization** — collider/trigger wireframes (`PhysicsDebug`, component
+      -based, works in edit + play), toggle in the View menu.
+- [ ] **Mesh colliders** (Convex / Triangle) — enum present; cooking deferred (needs retained
+      vertex data), currently falls back to a box with a logged warning.
 - [ ] **Character controller** (kinematic) for player movement.
 
 ## Tier 4 — Rendering depth
@@ -62,6 +72,10 @@ Make what already exists persistent and composable. Highest return, low risk.
 - [x] **Gizmo snapping** — hold Ctrl to snap (0.5u / 15° / 0.1).
 - [x] **Mesh-outline selection** — stencil silhouette around the selected object (replaces the
       AABB box).
+- [x] **Procedural infinite grid** — camera-independent ground grid in a fragment shader
+      (`grid.vert/frag`): ray-to-plane per pixel, fwidth AA, major/minor lines, coloured X/Z
+      axes, distance fade, correct depth; grid spacing drives gizmo snapping. Replaces the old
+      fixed line-mesh grid.
 - [ ] **Editor UX (remaining)** — multi-select, scene-tree multi-drag, prefabs.
 - [ ] **Audio** (miniaudio / OpenAL) — 2D then 3D positional.
 - [ ] **In-game UI / text** rendering (the FreeType HUD generalized to a UI layer).

@@ -3,9 +3,11 @@
 
 #include <string>
 #include <vector>
+#include <cstdint>
 
 class Scene;
 class Input;
+class PhysicsScene;
 struct GameObject;
 
 // A tunable parameter a behavior exposes to the editor (name + default value). Per-object
@@ -24,6 +26,7 @@ struct ScriptContext
 	Scene& scene;
 	Input& input;
 	float deltaTime;
+	PhysicsScene* physics = nullptr; // raycasts / velocities / forces (null if unavailable)
 };
 
 // Base class for a gameplay behavior. Instances live only during Play mode (owned by the
@@ -35,6 +38,8 @@ public:
 	virtual ~ScriptBehavior() = default;
 	virtual void OnStart(ScriptContext&) {}            // once, when Play begins
 	virtual void OnUpdate(ScriptContext&) {}           // every frame while playing
+	virtual void OnCollision(ScriptContext&, std::uint32_t /*otherId*/) {} // contact (touch found)
+	virtual void OnTrigger(ScriptContext&, std::uint32_t /*otherId*/) {}   // trigger overlap begin
 
 	// Parameters this behavior exposes in the Inspector (name + default). Override to declare.
 	virtual void DeclareParams(std::vector<ScriptParam>&) const {}

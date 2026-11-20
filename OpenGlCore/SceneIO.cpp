@@ -76,6 +76,28 @@ namespace
 				for (const auto& [k, v] : go->script->params) params[k] = v;
 				j["script"] = { {"behavior", go->script->behaviorName}, {"enabled", go->script->enabled}, {"params", params} };
 			}
+			if (go->rigidBody)
+			{
+				const RigidBodyComponent& rb = *go->rigidBody;
+				j["rigidBody"] = {
+					{"type", (int)rb.type}, {"mass", rb.mass}, {"useGravity", rb.useGravity},
+					{"linearDamping", rb.linearDamping}, {"angularDamping", rb.angularDamping},
+					{"initLinVel", Vec3(rb.initialLinearVelocity)}, {"initAngVel", Vec3(rb.initialAngularVelocity)},
+					{"freezePos", json::array({rb.freezePosX, rb.freezePosY, rb.freezePosZ})},
+					{"freezeRot", json::array({rb.freezeRotX, rb.freezeRotY, rb.freezeRotZ})},
+					{"enabled", rb.enabled},
+				};
+			}
+			if (go->collider)
+			{
+				const ColliderComponent& co = *go->collider;
+				j["collider"] = {
+					{"shape", (int)co.shape}, {"center", Vec3(co.center)}, {"halfExtents", Vec3(co.halfExtents)},
+					{"radius", co.radius}, {"halfHeight", co.halfHeight}, {"isTrigger", co.isTrigger},
+					{"material", { {"staticFriction", co.material.staticFriction}, {"dynamicFriction", co.material.dynamicFriction}, {"restitution", co.material.restitution} }},
+					{"enabled", co.enabled},
+				};
+			}
 			arr.push_back(std::move(j));
 		}
 		root["objects"] = std::move(arr);
@@ -187,6 +209,46 @@ namespace
 					for (auto it = s["params"].begin(); it != s["params"].end(); ++it)
 						sc.params[it.key()] = it.value().get<float>();
 				go->script = sc;
+			}
+
+			if (j.contains("rigidBody"))
+			{
+				const json& r = j["rigidBody"];
+				RigidBodyComponent rb;
+				rb.type = (RigidBodyComponent::BodyType)r.value("type", 1);
+				rb.mass = r.value("mass", 1.0f);
+				rb.useGravity = r.value("useGravity", true);
+				rb.linearDamping = r.value("linearDamping", 0.05f);
+				rb.angularDamping = r.value("angularDamping", 0.05f);
+				rb.initialLinearVelocity = ToVec3(r.value("initLinVel", json()), glm::vec3(0.0f));
+				rb.initialAngularVelocity = ToVec3(r.value("initAngVel", json()), glm::vec3(0.0f));
+				if (r.contains("freezePos") && r["freezePos"].is_array() && r["freezePos"].size() == 3)
+				{ rb.freezePosX = r["freezePos"][0]; rb.freezePosY = r["freezePos"][1]; rb.freezePosZ = r["freezePos"][2]; }
+				if (r.contains("freezeRot") && r["freezeRot"].is_array() && r["freezeRot"].size() == 3)
+				{ rb.freezeRotX = r["freezeRot"][0]; rb.freezeRotY = r["freezeRot"][1]; rb.freezeRotZ = r["freezeRot"][2]; }
+				rb.enabled = r.value("enabled", true);
+				go->rigidBody = rb;
+			}
+
+			if (j.contains("collider"))
+			{
+				const json& c = j["collider"];
+				ColliderComponent co;
+				co.shape = (ColliderComponent::Shape)c.value("shape", 0);
+				co.center = ToVec3(c.value("center", json()), glm::vec3(0.0f));
+				co.halfExtents = ToVec3(c.value("halfExtents", json()), glm::vec3(0.5f));
+				co.radius = c.value("radius", 0.5f);
+				co.halfHeight = c.value("halfHeight", 0.5f);
+				co.isTrigger = c.value("isTrigger", false);
+				if (c.contains("material"))
+				{
+					const json& m = c["material"];
+					co.material.staticFriction = m.value("staticFriction", 0.5f);
+					co.material.dynamicFriction = m.value("dynamicFriction", 0.5f);
+					co.material.restitution = m.value("restitution", 0.1f);
+				}
+				co.enabled = c.value("enabled", true);
+				go->collider = co;
 			}
 
 			scene.Add(std::move(go)); // preserves the saved id, keeps nextId monotonic

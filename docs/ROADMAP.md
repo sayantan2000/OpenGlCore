@@ -91,6 +91,20 @@ See `plan.md`. Done so far:
 - **Remaining in Tier 2**: event/messaging system, Lua scripting, Inspector-exposed script
   params, gamepad input. (ECS deferred.)
 
+## Phase 10 — Game-engine Tier 3: NVIDIA PhysX + infinite grid — ⏳ IN PROGRESS (2026-11-21)
+See `docs/PHYSICS.md` and ADR-0007. Done:
+- **PhysX 5.5** (vcpkg) wrapped by `PhysicsScene` (pImpl): Static/Dynamic/Kinematic bodies;
+  Box/Sphere/Capsule/Plane colliders; physics materials; mass/gravity/damping/constraints;
+  fixed-timestep sim with transform write-back; Play-mode start/stop with snapshot restore;
+  raycast/sphere-cast/overlap; collision + trigger callbacks into scripting.
+- Physics **Inspector** (Rigidbody + Collider sections, undoable) and **serialization**.
+- Physics **debug wireframes** (`PhysicsDebug`), View-menu toggle.
+- **Procedural infinite grid** (`grid.vert/frag`) replacing the fixed line-mesh grid; spacing
+  drives gizmo snapping.
+- Headless self-test drops a dynamic sphere and verifies it lands: **PASS**.
+- **Remaining**: convex/triangle mesh collider cooking (retain vertex data), character
+  controller, joints/CCD; Tier-2 leftovers (events bus, Lua, gamepad); editor multi-select/prefabs.
+
 ## Phase 5 — Remaining / future (Low–Medium)
 - ✅ **PBR texture-mapped mesh**: the wooden chair (`Models/wooden_chair_ukipagtbw_high/`)
   renders with BaseColor/Normal/Roughness/AO maps (metallic=0) via `Model::DrawGeometry` +
