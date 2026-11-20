@@ -6,6 +6,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <stdexcept>
 #include <vector>
+#include <cmath>
 
 static constexpr bool FULLSCREEN = true;
 
@@ -45,6 +46,9 @@ Application::Application()
 	CreateHdrTarget(fbWidth, fbHeight);
 	glGenVertexArrays(1, &emptyVAO);
 
+	lines = std::make_unique<LineRenderer>();
+	BuildPrimitiveLibrary();
+
 	pbrShader->Activate();
 	glUniform1i(glGetUniformLocation(pbrShader->ID, "u_irradianceMap"), 0);
 	glUniform1i(glGetUniformLocation(pbrShader->ID, "u_prefilterMap"), 1);
@@ -53,7 +57,7 @@ Application::Application()
 	scene = std::make_unique<Scene>();
 	BuildScene();
 
-	editor.Init(window.Handle());
+	editor.Init(window.Handle(), camera.get(), &primitives);
 	editor.Log(std::string("IBL source: ") + (ibl->UsingHDRI() ? "HDRI (ballroom_4k.exr)" : "procedural sky"));
 	editor.Log("Scene loaded: " + std::to_string(scene->Count()) + " objects.");
 
@@ -83,6 +87,8 @@ void Application::BuildScene()
 		mr.material.normalMap = chairNormal->ID;
 		mr.material.roughnessMap = chairRoughness->ID;
 		mr.material.aoMap = chairAO->ID;
+		mr.localMin = chair->BoundsMin(); // model-space AABB for picking / focus
+		mr.localMax = chair->BoundsMax();
 		go->meshRenderer = mr;
 		scene->Add(std::move(go));
 	}
@@ -130,7 +136,44 @@ void Application::BuildScene()
 	makeLight("Spot Light", LightComponent::Type::Spot, glm::vec3(0.0f, 2.0f, 12.0f),
 		glm::vec3(1.0f), 500.0f, glm::vec3(0.0f, 0.0f, -1.0f));
 
+	// A rectangle (area) light demonstrating the area-light path.
+	{
+		auto go = std::make_unique<GameObject>();
+		go->name = "Area Light";
+		go->transform.position = glm::vec3(0.0f, 5.0f, -6.0f);
+		LightComponent lc;
+		lc.type = LightComponent::Type::Rect;
+		lc.color = glm::vec3(1.0f, 0.95f, 0.85f);
+		lc.intensity = 25.0f;
+		lc.direction = glm::normalize(glm::vec3(0.0f, -0.3f, 1.0f)); // emits toward the scene
+		lc.width = 6.0f; lc.height = 3.0f;
+		go->light = lc;
+		scene->Add(std::move(go));
+	}
+
 	scene->Select(0);
+}
+
+void Application::BuildPrimitiveLibrary()
+{
+	const std::vector<VertexAttribute> layout{ {3, GL_FLOAT}, {3, GL_FLOAT}, {2, GL_FLOAT}, {3, GL_FLOAT} };
+	auto make = [&](PrimitiveType type, const char* name, glm::vec3 mn, glm::vec3 mx,
+		std::vector<GLfloat>& v, std::vector<GLuint>& i)
+	{
+		primitiveMeshes.push_back(std::make_unique<Mesh>(v, i, layout));
+		PrimitiveDef& d = primitives.Get(type);
+		d.mesh = primitiveMeshes.back().get();
+		d.localMin = mn; d.localMax = mx; d.name = name;
+	};
+
+	std::vector<GLfloat> v; std::vector<GLuint> i;
+	Geometry::BuildCube(v, i);                 make(PrimitiveType::Cube, "Cube", glm::vec3(-1), glm::vec3(1), v, i);
+	Geometry::BuildSphere(v, i, 48, 1.0f);     make(PrimitiveType::Sphere, "Sphere", glm::vec3(-1), glm::vec3(1), v, i);
+	Geometry::BuildPlane(v, i, 1);             make(PrimitiveType::Plane, "Plane", glm::vec3(-1, -0.02f, -1), glm::vec3(1, 0.02f, 1), v, i);
+	Geometry::BuildCylinder(v, i, 32, 1, 2);   make(PrimitiveType::Cylinder, "Cylinder", glm::vec3(-1), glm::vec3(1), v, i);
+	Geometry::BuildCone(v, i, 32, 1, 2);       make(PrimitiveType::Cone, "Cone", glm::vec3(-1), glm::vec3(1), v, i);
+	Geometry::BuildTorus(v, i, 48, 24, 0.75f, 0.25f); make(PrimitiveType::Torus, "Torus", glm::vec3(-1, -0.25f, -1), glm::vec3(1, 0.25f, 1), v, i);
+	Geometry::BuildCapsule(v, i, 24, 0.5f, 1.0f);     make(PrimitiveType::Capsule, "Capsule", glm::vec3(-0.5f, -1, -0.5f), glm::vec3(0.5f, 1, 0.5f), v, i);
 }
 
 LightSet Application::GatherLights()
@@ -164,6 +207,22 @@ LightSet Application::GatherLights()
 			ls.spots.push_back(s);
 			break;
 		}
+		case LightComponent::Type::Rect:
+		{
+			RectLight r;
+			r.position = go->transform.position;
+			r.normal = glm::normalize(l.direction);
+			// Build an orthonormal basis for the emitter plane.
+			glm::vec3 refUp = (std::abs(r.normal.y) > 0.95f) ? glm::vec3(1, 0, 0) : glm::vec3(0, 1, 0);
+			r.right = glm::normalize(glm::cross(refUp, r.normal));
+			r.up = glm::normalize(glm::cross(r.normal, r.right));
+			r.color = l.color;
+			r.intensity = l.intensity;
+			r.halfWidth = l.width * 0.5f;
+			r.halfHeight = l.height * 0.5f;
+			ls.rects.push_back(r);
+			break;
+		}
 		}
 	}
 	return ls;
@@ -192,6 +251,26 @@ void Application::CreateHdrTarget(int w, int h)
 		throw std::runtime_error("HDR framebuffer is not complete");
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void Application::DestroyHdrTarget()
+{
+	if (hdrColor) { glDeleteTextures(1, &hdrColor); hdrColor = 0; }
+	if (hdrDepth) { glDeleteRenderbuffers(1, &hdrDepth); hdrDepth = 0; }
+	if (hdrFBO) { glDeleteFramebuffers(1, &hdrFBO); hdrFBO = 0; }
+}
+
+void Application::ResizeIfNeeded()
+{
+	int w = 0, h = 0;
+	glfwGetFramebufferSize(window.Handle(), &w, &h);
+	if (w <= 0 || h <= 0 || (w == fbWidth && h == fbHeight)) return;
+
+	fbWidth = w; fbHeight = h;
+	camera->width = (float)w;
+	camera->height = (float)h;
+	DestroyHdrTarget();
+	CreateHdrTarget(w, h);
 }
 
 void Application::RenderSceneHDR()
@@ -227,6 +306,8 @@ void Application::RenderSceneHDR()
 			mr.mesh->Draw();
 	}
 
+	RenderLightGizmos();
+
 	if (settings.showSkybox)
 		ibl->RenderBackground(
 			camera->GetProjectionMatrix(fov, 0.1f, 200.0f),
@@ -234,6 +315,68 @@ void Application::RenderSceneHDR()
 			settings.skyboxIntensity);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void Application::RenderLightGizmos()
+{
+	const glm::mat4 viewProj = camera->cameraMatrix; // proj * view (updated this frame)
+
+	// Light wireframes (yellow).
+	for (auto& go : scene->Objects())
+	{
+		if (!go->active || !go->light) continue;
+		const LightComponent& l = *go->light;
+		glm::vec3 p = go->transform.position;
+		switch (l.type)
+		{
+		case LightComponent::Type::Point:
+			lines->AddCircle(p, glm::vec3(1, 0, 0), glm::vec3(0, 1, 0), 0.3f);
+			lines->AddCircle(p, glm::vec3(0, 1, 0), glm::vec3(0, 0, 1), 0.3f);
+			lines->AddCircle(p, glm::vec3(1, 0, 0), glm::vec3(0, 0, 1), 0.3f);
+			break;
+		case LightComponent::Type::Directional:
+		{
+			glm::vec3 d = glm::normalize(l.direction);
+			lines->AddLine(p - d * 0.5f, p + d * 1.5f);
+			break;
+		}
+		case LightComponent::Type::Spot:
+		{
+			glm::vec3 d = glm::normalize(l.direction);
+			glm::vec3 end = p + d * 2.0f;
+			lines->AddLine(p, end);
+			glm::vec3 refUp = (std::abs(d.y) > 0.95f) ? glm::vec3(1, 0, 0) : glm::vec3(0, 1, 0);
+			glm::vec3 right = glm::normalize(glm::cross(refUp, d));
+			glm::vec3 up = glm::normalize(glm::cross(d, right));
+			float r = 2.0f * std::tan(glm::radians(l.outerCutoffDeg));
+			lines->AddCircle(end, right, up, r);
+			break;
+		}
+		case LightComponent::Type::Rect:
+		{
+			glm::vec3 n = glm::normalize(l.direction);
+			glm::vec3 refUp = (std::abs(n.y) > 0.95f) ? glm::vec3(1, 0, 0) : glm::vec3(0, 1, 0);
+			glm::vec3 right = glm::normalize(glm::cross(refUp, n)) * (l.width * 0.5f);
+			glm::vec3 up = glm::normalize(glm::cross(n, glm::normalize(right))) * (l.height * 0.5f);
+			glm::vec3 c0 = p - right - up, c1 = p + right - up, c2 = p + right + up, c3 = p - right + up;
+			lines->AddLine(c0, c1); lines->AddLine(c1, c2);
+			lines->AddLine(c2, c3); lines->AddLine(c3, c0);
+			lines->AddLine(p, p + n * 1.0f); // emitter normal
+			break;
+		}
+		}
+	}
+	lines->Flush(viewProj, glm::vec3(1.0f, 0.85f, 0.2f));
+
+	// Selection highlight (orange AABB) for the selected mesh object.
+	if (GameObject* sel = scene->SelectedObject())
+	{
+		if (sel->meshRenderer)
+		{
+			lines->AddBox(sel->meshRenderer->localMin, sel->meshRenderer->localMax, sel->transform.Matrix());
+			lines->Flush(viewProj, glm::vec3(1.0f, 0.5f, 0.1f), 2.0f);
+		}
+	}
 }
 
 void Application::TonemapToScreen()
@@ -265,6 +408,7 @@ void Application::Run()
 	while (!window.ShouldClose())
 	{
 		window.PollEvents();
+		ResizeIfNeeded();
 
 		double now = glfwGetTime();
 		Time::_DeltaTime = (float)(now - lastFrame);
@@ -280,14 +424,20 @@ void Application::Run()
 			frameCount = 0;
 		}
 
-		// Build the editor UI first so capture flags reflect this frame's interaction.
-		editor.BeginFrame();
-		editor.BuildUI(*scene, settings);
-
-		// Camera only responds when ImGui is not using the mouse/keyboard.
-		if (!editor.WantCaptureMouse() && !editor.WantCaptureKeyboard())
-			camera->Inputs(window.Handle(), Time::_DeltaTime);
+		// Matrices for this frame's gizmo / picking.
 		camera->updateMatrix(fov, 0.1f, 200.0f);
+		glm::mat4 view = camera->GetViewMatrix();
+		glm::mat4 proj = camera->GetProjectionMatrix(fov, 0.1f, 200.0f);
+
+		// Build the editor UI (handles selection, gizmo, shortcuts, focus) so capture flags
+		// reflect this frame's interaction.
+		editor.BeginFrame();
+		editor.BuildUI(*scene, settings, view, proj, fbWidth, fbHeight, Time::_DeltaTime);
+
+		// Camera flythrough only when ImGui/gizmo aren't capturing input.
+		if (!editor.WantCaptureMouse() && !editor.WantCaptureKeyboard() && !editor.WantCaptureViewport())
+			camera->Inputs(window.Handle(), Time::_DeltaTime);
+		camera->updateMatrix(fov, 0.1f, 200.0f); // reflect any movement for the render pass
 
 		RenderSceneHDR();
 		TonemapToScreen();
@@ -302,8 +452,6 @@ void Application::Run()
 Application::~Application()
 {
 	editor.Shutdown();
-	if (hdrColor) glDeleteTextures(1, &hdrColor);
-	if (hdrDepth) glDeleteRenderbuffers(1, &hdrDepth);
-	if (hdrFBO) glDeleteFramebuffers(1, &hdrFBO);
+	DestroyHdrTarget();
 	if (emptyVAO) glDeleteVertexArrays(1, &emptyVAO);
 }

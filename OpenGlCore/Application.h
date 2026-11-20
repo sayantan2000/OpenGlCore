@@ -14,7 +14,10 @@
 #include "PbrMaterial.h"
 #include "Scene.h"
 #include "Editor.h"
+#include "PrimitiveLibrary.h"
+#include "LineRenderer.h"
 #include "shaderClass.h"
+#include <vector>
 
 // Owns the window, render targets, the Scene, the ImGui Editor, and the main loop. Wires the
 // PBR + IBL + HDR pipeline and the editor together; main() just constructs and runs.
@@ -30,8 +33,12 @@ public:
 
 private:
 	void BuildScene();
+	void BuildPrimitiveLibrary();     // create shared primitive meshes for the editor
 	void CreateHdrTarget(int w, int h);
+	void DestroyHdrTarget();
+	void ResizeIfNeeded();            // recreate size-dependent targets on framebuffer resize
 	void RenderSceneHDR();     // iterate the Scene into the HDR framebuffer + skybox
+	void RenderLightGizmos();  // wireframe overlays for lights (incl. rectangle area lights)
 	void TonemapToScreen();    // HDR -> default framebuffer (ACES + gamma)
 	LightSet GatherLights();   // build a LightSet from the scene's light objects
 
@@ -47,6 +54,11 @@ private:
 	std::unique_ptr<Mesh>   sphere;
 	std::unique_ptr<Model>  chair;
 	std::unique_ptr<Texture> chairAlbedo, chairNormal, chairRoughness, chairAO;
+
+	// Shared primitive meshes (cube/sphere/plane/...) referenced by editor-created objects.
+	std::vector<std::unique_ptr<Mesh>> primitiveMeshes;
+	PrimitiveLibrary primitives;
+	std::unique_ptr<LineRenderer> lines;
 
 	std::unique_ptr<Scene> scene;
 	Editor editor;

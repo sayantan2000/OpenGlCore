@@ -53,4 +53,19 @@ void LightSet::Upload(Shader& shader) const
 		SetFloat(id, (base + "innerCos").c_str(), std::cos(glm::radians(spots[i].innerCutoffDeg)));
 		SetFloat(id, (base + "outerCos").c_str(), std::cos(glm::radians(spots[i].outerCutoffDeg)));
 	}
+
+	// Rectangle / area lights
+	int rc = std::min((int)rects.size(), MAX_RECT_LIGHTS);
+	SetInt(id, "u_numRectLights", rc);
+	for (int i = 0; i < rc; ++i)
+	{
+		std::string base = "u_rectLights[" + std::to_string(i) + "].";
+		SetVec3(id, (base + "position").c_str(), rects[i].position);
+		SetVec3(id, (base + "normal").c_str(), glm::normalize(rects[i].normal));
+		SetVec3(id, (base + "right").c_str(), glm::normalize(rects[i].right));
+		SetVec3(id, (base + "up").c_str(), glm::normalize(rects[i].up));
+		SetVec3(id, (base + "color").c_str(), rects[i].color * rects[i].intensity);
+		SetFloat(id, (base + "halfWidth").c_str(), rects[i].halfWidth);
+		SetFloat(id, (base + "halfHeight").c_str(), rects[i].halfHeight);
+	}
 }

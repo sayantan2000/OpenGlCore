@@ -38,6 +38,32 @@
 - Build: links vcpkg ImGui (static) + vcpkg GLFW (dynamic). Debug|x64 builds; runtime smoke
   test clean. Editor interaction not visually verified in this environment.
 
+## Phase 7 — Interactive scene editor (selection, gizmos, creation, undo/redo) — ✅ DONE (2026-11-20)
+- **Fixed editor layout** (replaces docking): non-movable Hierarchy / Inspector / Console +
+  a central viewport rect the 3D shows through; `Application::ResizeIfNeeded` rebuilds the
+  HDR target and updates the camera on framebuffer resize.
+- **Viewport object selection** (`Picking.h`): left-click ray-picks the nearest object via
+  ray/local-AABB; empty-space click deselects; selection syncs Hierarchy + Inspector.
+- **Transform gizmos** (vendored **ImGuizmo**): W/E/R translate/rotate/scale, world/local,
+  axis highlight; each drag is one undo command.
+- **Camera** switched to **right-mouse flythrough** so LMB is free for selection/gizmo and
+  W/E/R are tool shortcuts. **F** / Hierarchy double-click **focuses** the selection (frames
+  its world AABB, preserving view direction).
+- **Shortcuts**: W/E/R, F, Delete, Ctrl+D (duplicate), Ctrl+Z/Ctrl+Y (undo/redo), Ctrl+S
+  (logs "serialization not implemented"); gated off while typing / flythrough.
+- **Hierarchy Create context menu**: Empty / Primitive (cube, sphere, plane, cylinder,
+  capsule, cone, torus — new `Geometry` builders + `PrimitiveLibrary`) / Light (directional,
+  point, spot, **rectangle**). New objects auto-select and show in the Inspector.
+- **Rectangle/area light**: representative-point approximation in `pbr.frag` (NOT full LTC;
+  documented), with a `LineRenderer` wireframe overlay (+ light gizmos, selection AABB).
+- **Centralized undo/redo** (`EditorCommand.h`): stable object ids; `ModifyCommand`
+  (before/after snapshots) for Inspector + gizmo edits, `Add`/`RemoveCommand` for create/
+  duplicate/delete; single history; grouped per interaction.
+- Build: compiles ImGuizmo + new modules. Debug|x64 builds; runtime smoke test clean.
+  **Editor interaction not visually verified (no display).**
+- **Remaining**: scene serialization (Ctrl+S), full LTC area light, gizmo snapping, mesh
+  outline selection highlight, undo-history panel polish.
+
 ## Phase 5 — Remaining / future (Low–Medium)
 - ✅ **PBR texture-mapped mesh**: the wooden chair (`Models/wooden_chair_ukipagtbw_high/`)
   renders with BaseColor/Normal/Roughness/AO maps (metallic=0) via `Model::DrawGeometry` +
@@ -46,7 +72,8 @@
   env source is the HDRI at `Images/environment.hdr` when present (procedural sky fallback
   otherwise); the same env cubemap drives the skybox + irradiance/prefilter/BRDF. Skybox
   intensity is independently controllable (`u_bgIntensity`). Supply the `.hdr` to use it.
-- **Framebuffer resize** handling (recreate HDR target + update camera/Text on resize).
+- ✅ **Framebuffer resize** handling (`Application::ResizeIfNeeded` recreates the HDR target
+  and updates the camera on resize; Text projection is still fixed-size).
 - **Model PBR map import** in `Model` (normal/metallic/roughness/AO, not just diffuse).
 - Remove now-unused legacy shaders/classes (`default.*`, `Light.*`, `Primitive`, `Texture`)
   once confirmed obsolete.

@@ -24,9 +24,13 @@ uniform vec3 u_camPos;
 struct DirLight   { vec3 direction; vec3 color; };
 struct PointLight { vec3 position;  vec3 color; };
 struct SpotLight  { vec3 position;  vec3 direction; vec3 color; float innerCos; float outerCos; };
+// Area light: a rectangle centred at `position`, emitting along +normal, spanning
+// +/-halfWidth along `right` and +/-halfHeight along `up`.
+struct RectLight  { vec3 position; vec3 normal; vec3 right; vec3 up; vec3 color; float halfWidth; float halfHeight; };
 
 #define MAX_POINT_LIGHTS 8
 #define MAX_SPOT_LIGHTS  4
+#define MAX_RECT_LIGHTS  4
 
 uniform bool       u_hasDirLight;
 uniform DirLight   u_dirLight;
@@ -34,6 +38,8 @@ uniform int        u_numPointLights;
 uniform PointLight u_pointLights[MAX_POINT_LIGHTS];
 uniform int        u_numSpotLights;
 uniform SpotLight  u_spotLights[MAX_SPOT_LIGHTS];
+uniform int        u_numRectLights;
+uniform RectLight  u_rectLights[MAX_RECT_LIGHTS];
 
 // ---- IBL ----
 uniform bool u_useIBL;
@@ -119,6 +125,58 @@ vec3 shade(vec3 N, vec3 V, vec3 L, vec3 radiance, vec3 albedo, float metallic, f
 	return (kD * albedo / PI + specular) * radiance * NdotL;
 }
 
+// Rectangle (area) light via a representative-point approximation (not full LTC): the
+// diffuse term uses the closest point on the rectangle to the shading point, and the
+// specular term uses the point where the reflection ray meets the rectangle (clamped to
+// its extents). Flux scales with the emitter area and one-sided emission along +normal.
+vec3 shadeRect(vec3 N, vec3 V, RectLight rl, vec3 albedo, float metallic, float roughness, vec3 F0)
+{
+	vec3 toFrag = WorldPos - rl.position;
+	float facing = dot(rl.normal, normalize(toFrag)); // >0: fragment is in front of the emitter
+	if (facing <= 0.0) return vec3(0.0);
+
+	// Closest point on the rectangle (for the diffuse lobe).
+	float pr = clamp(dot(toFrag, rl.right), -rl.halfWidth,  rl.halfWidth);
+	float pu = clamp(dot(toFrag, rl.up),    -rl.halfHeight, rl.halfHeight);
+	vec3 closest = rl.position + rl.right * pr + rl.up * pu;
+	vec3 Ld = closest - WorldPos;
+	float distD = max(length(Ld), 1e-4);
+	Ld /= distD;
+
+	float area = (2.0 * rl.halfWidth) * (2.0 * rl.halfHeight);
+	float atten = area / max(distD * distD, 1e-4);
+	vec3 radiance = rl.color * atten * facing;
+
+	// Diffuse (Lambert) with the closest-point direction.
+	float NdotLd = max(dot(N, Ld), 0.0);
+	vec3 kD = (1.0 - metallic) * albedo / PI;
+	vec3 diffuse = kD * radiance * NdotLd;
+
+	// Specular representative point: reflection ray vs the light plane, clamped to extents.
+	vec3 R = reflect(-V, N);
+	vec3 Ls = Ld;
+	float denom = dot(R, -rl.normal);
+	if (denom > 1e-4)
+	{
+		float t = dot(rl.position - WorldPos, -rl.normal) / denom;
+		if (t > 0.0)
+		{
+			vec3 hit = WorldPos + R * t - rl.position;
+			float hr = clamp(dot(hit, rl.right), -rl.halfWidth,  rl.halfWidth);
+			float hu = clamp(dot(hit, rl.up),    -rl.halfHeight, rl.halfHeight);
+			Ls = normalize(rl.position + rl.right * hr + rl.up * hu - WorldPos);
+		}
+	}
+	vec3 H = normalize(V + Ls);
+	float NDF = DistributionGGX(N, H, roughness);
+	float G   = GeometrySmith(N, V, Ls, roughness);
+	vec3  F   = fresnelSchlick(max(dot(H, V), 0.0), F0);
+	float specDenom = 4.0 * max(dot(N, V), 0.0) * max(dot(N, Ls), 0.0) + 1e-4;
+	vec3 specular = (NDF * G * F) / specDenom * radiance * max(dot(N, Ls), 0.0);
+
+	return diffuse + specular;
+}
+
 void main()
 {
 	// Sample material (albedo map assumed sRGB, converted to linear).
@@ -163,6 +221,12 @@ void main()
 		float epsilon = u_spotLights[i].innerCos - u_spotLights[i].outerCos;
 		float cone = clamp((theta - u_spotLights[i].outerCos) / max(epsilon, 1e-4), 0.0, 1.0);
 		Lo += shade(N, V, L, u_spotLights[i].color * attenuation * cone, albedo, metallic, roughness, F0);
+	}
+
+	// Rectangle / area lights (representative-point approximation)
+	for (int i = 0; i < u_numRectLights; ++i)
+	{
+		Lo += shadeRect(N, V, u_rectLights[i], albedo, metallic, roughness, F0);
 	}
 
 	// Ambient / IBL

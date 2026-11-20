@@ -54,6 +54,49 @@
 - **Status**: Accepted and implemented. Debug|x64 builds; runtime smoke test clean. Editor
   interaction not visually verified in the dev environment.
 
+## ADR-0004 — Interactive scene editor: picking, gizmos, creation, undo/redo (2026-11-20)
+- **Context**: Grow the Inspector-only editor into an interactive Unity-style scene editor
+  (viewport selection, transform gizmos, shortcuts, focus, fixed layout, create menus, area
+  light, undo/redo).
+- **Decisions**:
+  - **Fixed, non-dockable layout** (replaces ADR-0003's docking passthrough): four fixed
+    `ImGui` windows (`NoMove|NoResize|NoCollapse|NoBringToFrontOnFocus`) — Hierarchy left,
+    Inspector right, Console bottom, and an explicit central **viewport rect** the 3D scene
+    shows through. `io.IniFilename=nullptr` so positions never drift. The scene still renders
+    fullscreen behind the panels (no render-to-texture), so the camera aspect never distorts;
+    the central rect only defines where picking/gizmo input is accepted.
+  - **ImGuizmo** (vendored at `Libraries/source/ImGuizmo`, master, ImGui-1.93 compatible) for
+    translate/rotate/scale gizmos — correct interaction math, axis highlight, world/local,
+    one-command-per-drag — rather than hand-rolling gizmo geometry/ray math.
+  - **CPU ray/AABB picking** (`Picking.h`): screen→world ray, transformed into each object's
+    local space and tested against its local AABB; nearest world hit wins. Chosen over GPU
+    picking because it needs no extra render target and fits the existing fullscreen pass.
+  - **Right-mouse flythrough camera** (changed from hold-LMB look): navigation (WASD + look)
+    is active only while RMB is held, freeing LMB for selection/gizmo drag and W/E/R as tool
+    shortcuts. This resolves the WASD-vs-tool-shortcut and click-vs-look conflicts cleanly.
+  - **Centralized undo/redo** (`EditorCommand.h`, Command pattern): objects carry a stable
+    `id`; `ModifyCommand` stores before/after **GameObject value snapshots** (cheap — geometry
+    is referenced by non-owning pointer, so copies share handles and references stay valid),
+    `Add`/`RemoveCommand` restore objects at their original index/id. One command per
+    interaction via `IsItemActivated`/`IsItemDeactivatedAfterEdit` (Inspector) and
+    using-edge detection (gizmo). A single history serves Inspector, gizmo and hierarchy.
+  - **Primitive library** (`PrimitiveLibrary.h` + `Geometry` builders): Application owns the
+    shared cube/sphere/plane/cylinder/cone/torus/capsule meshes; the editor only references
+    them when creating objects, keeping all GL ownership in Application.
+  - **Rectangle (area) light = representative-point approximation**, NOT full LTC: the PBR
+    shader gains a `RectLight` path whose diffuse uses the closest point on the rectangle and
+    whose specular uses the reflection-ray/rectangle intersection, with area-scaled,
+    one-sided, inverse-square falloff. This is physically motivated and honest (documented as
+    an approximation); full LTC was judged too heavy (needs the Heitz LUT tables) for the
+    learning scope. A wireframe overlay (`LineRenderer`) visualizes it.
+- **Status**: Accepted and implemented. Debug|x64 builds clean; runtime smoke test clean (no
+  shader/GL errors, HDRI loaded, 7 s no crash). Editor **interaction and visuals were not
+  verified** (no display in the dev environment).
+- **Known limitations**: gizmo rotation round-trips through the Transform's Euler angles
+  (glm order), so very large rotations can show minor drift vs ImGuizmo's internal order;
+  no gizmo snapping UI; selection highlight is an AABB, not a mesh outline; no scene
+  serialization yet (Ctrl+S logs a notice).
+
 ## Pre-existing decisions (reconstructed from the code — not formally recorded before)
 These describe why the project looks the way it does; confirm/revise with the maintainer.
 

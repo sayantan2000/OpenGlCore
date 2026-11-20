@@ -31,10 +31,14 @@ organized into small RAII modules; `main.cpp` is just an entry point.
 - Assets (Shader/, Images/, Fonts/, Models/) + vcpkg DLLs are copied next to the exe on
   build, so double-click works. From a terminal the CWD must contain those folders
   (`build.ps1 -Run` handles it). SKYBOX/ is also copied for the HDRI.
-- **Editor controls**: Hierarchy (left) selects objects → unified Inspector (right) shows
-  Transform + Mesh Renderer + Material + Light component sections; Console (bottom). The
-  3D viewport shows through the docking central node. Camera (WASD + hold-LMB look) works
-  only when the cursor isn't over an ImGui panel.
+- **Editor controls**: FIXED layout — Hierarchy (left), Scene Viewport (centre, the 3D shows
+  through), unified Inspector (right), Console (bottom). **Left-click** an object in the
+  viewport or Hierarchy to select (empty-space click deselects). **Hold RIGHT mouse** to fly
+  (WASD + Shift sprint, Space/Ctrl up/down, mouse look). Transform gizmos (ImGuizmo): **W**
+  translate, **E** rotate, **R** scale (Gizmo menu toggles world/local). **F** or Hierarchy
+  double-click focuses the selection. **Delete** deletes, **Ctrl+D** duplicates, **Ctrl+Z/
+  Ctrl+Y** undo/redo. Right-click the Hierarchy for the Create menu (Empty / Primitive /
+  Light). Camera/tool input is ignored while the cursor is over a panel or the gizmo.
 
 ## Architecture (see docs/ARCHITECTURE.md)
 Entry: `main.cpp` → `Application` (owns window, scene, render loop). Modules:
@@ -42,7 +46,7 @@ Entry: `main.cpp` → `Application` (owns window, scene, render loop). Modules:
 - `Application` — scene, HDR target, render + tonemap passes, main loop.
 - `Camera`, `Mesh`, `ElementBuffer`, `VerTexArray`, `VerTexBuffer`, `Shader` — RAII GL wrappers.
 - `Geometry` — procedural sphere (11-float layout).
-- `Light` — `DirectionalLight`/`PointLight`/`SpotLight` + `LightSet::Upload`.
+- `Light` — `DirectionalLight`/`PointLight`/`SpotLight`/`RectLight` (area) + `LightSet::Upload`.
 - `PbrMaterial` — metallic-roughness material (scalars + optional maps, units 3–7).
 - `IBL` — builds env cubemap from an equirectangular HDRI (`.exr` via tinyexr+zlib, or
   `.hdr` via stb) rendered through `equirect.frag`, or a procedural sky fallback
@@ -51,17 +55,28 @@ Entry: `main.cpp` → `Application` (owns window, scene, render loop). Modules:
 - `Model` — Assimp loader → `Mesh` list; `Draw`/`DrawPBR`/`DrawGeometry`.
 - `Text` — FreeType glyph renderer.
 - `Transform`/`GameObject`/`Scene` — lightweight scene model (TRS transform + optional
-  `MeshRenderer`/`LightComponent`; `std::optional` components, not an ECS).
-- `Editor` — Dear ImGui panels: Hierarchy, Inspector (per-component collapsible drawers),
-  Console, with a docking passthrough central viewport. `RenderSettings` holds exposure/
-  skybox/IBL toggles edited from the Inspector. Camera input is ignored while ImGui has
-  mouse/keyboard focus (`Editor::WantCaptureMouse/Keyboard`).
+  `MeshRenderer`/`LightComponent`; `std::optional` components, not an ECS). `GameObject` has a
+  stable `id`; `Scene` selects/removes/finds by id so undo/redo stays valid.
+- `Editor` — Dear ImGui editor: fixed Hierarchy/Inspector/Console panels + central viewport
+  rect, viewport ray-picking, ImGuizmo transform gizmos, keyboard shortcuts, camera focus,
+  Hierarchy Create context menu (Empty/Primitive/Light), and undo/redo. Camera/tool input is
+  ignored while ImGui has focus or the gizmo is hovered/used
+  (`Editor::WantCaptureMouse/Keyboard/Viewport`).
+- `EditorCommand.h` — undo/redo (`CommandHistory` + `ModifyCommand`/`AddCommand`/`RemoveCommand`).
+- `Picking.h` — screen→world ray + ray/AABB object picking.
+- `PrimitiveLibrary.h` + `Geometry` — shared cube/sphere/plane/cylinder/cone/torus/capsule
+  meshes (owned by `Application`) referenced by editor-created objects.
+- `LineRenderer` — immediate-mode line overlay for light gizmos, rectangle-light outlines and
+  the selection AABB (`line.vert`/`line.frag`).
+- `ImGuizmo` — vendored gizmo library at `Libraries/source/ImGuizmo` (compiled into the project).
 
 ## Shaders (OpenGlCore/Shader/)
-- `pbr.vert`/`pbr.frag` — main PBR (Cook-Torrance GGX/Smith/Schlick, maps, lights, IBL).
+- `pbr.vert`/`pbr.frag` — main PBR (Cook-Torrance GGX/Smith/Schlick, maps, lights incl. a
+  representative-point **rectangle/area light**, IBL).
 - `hdr.vert`/`hdr.frag` — fullscreen ACES tonemap + gamma.
 - IBL: `cubemap.vert`, `sky.frag`, `irradiance.frag`, `prefilter.frag`, `brdf.frag`,
   `background.vert`/`background.frag`.
+- `line.vert`/`line.frag` — editor line overlay (light gizmos, rect-light outline, selection AABB).
 - Legacy (still present, used by `Model::Draw` and older demos): `default.*`, `Light.*`,
   `albedo.frag`, `text.*`.
 
@@ -83,9 +98,12 @@ Entry: `main.cpp` → `Application` (owns window, scene, render loop). Modules:
 ## Status
 - **Done**: Phases 0–3 of the refactor roadmap (RAII, error checking, naming, Mesh,
   delta-time, shader correctness, Win32 decouple, FreeType text, Assimp models w/ node
-  transforms + materials + textures), plus the **full PBR + IBL + HDR renderer** and the
-  `main.cpp` → `Application` refactor. Debug|x64 builds; runtime smoke test clean
-  (no shader/GL errors). Visual output not verified in this environment.
+  transforms + materials + textures), the **full PBR + IBL + HDR renderer**, the unified
+  ImGui Inspector, and the **interactive scene editor** (viewport ray-picking, ImGuizmo
+  transform gizmos, W/E/R/F/Delete/Ctrl+D/Ctrl+Z/Ctrl+Y shortcuts, camera focus, fixed
+  layout, Hierarchy Create menu, primitive generation, rectangle/area light, centralized
+  undo/redo). Debug|x64 builds; runtime smoke test clean (no shader/GL errors). **Editor
+  interaction and visual output were NOT verified in this environment (no display).**
 
 ## Known issues / remaining tasks (see docs/ROADMAP.md)
 - PBR texture maps are exercised by the wooden chair (BaseColor/Normal/Roughness/AO);
@@ -96,3 +114,7 @@ Entry: `main.cpp` → `Application` (owns window, scene, render loop). Modules:
 - `Model` has no normal/metallic/roughness map import (diffuse color/texture only).
 - Legacy shaders/classes (`default.*`, `Light.*`, `Primitive`, `Texture`) remain but are
   no longer used by the main scene; candidates for removal.
+- Editor: no **scene serialization** yet (Ctrl+S logs a notice); the rectangle light is a
+  representative-point approximation, not full LTC; gizmo rotation round-trips through Euler
+  angles so very large rotations may drift slightly; selection highlight is an AABB, not a
+  mesh outline. See docs/ROADMAP.md and ADR-0004.

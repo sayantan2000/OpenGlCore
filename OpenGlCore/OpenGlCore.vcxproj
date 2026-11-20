@@ -125,7 +125,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\vcpkg_installed\x64-windows\include;$(ProjectDir)Libraries\source\zlib-1.3.1;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\vcpkg_installed\x64-windows\include;$(ProjectDir)Libraries\source\zlib-1.3.1;$(ProjectDir)Libraries\source\ImGuizmo;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -143,7 +143,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\vcpkg_installed\x64-windows\include;$(ProjectDir)Libraries\source\zlib-1.3.1;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\vcpkg_installed\x64-windows\include;$(ProjectDir)Libraries\source\zlib-1.3.1;$(ProjectDir)Libraries\source\ImGuizmo;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -159,6 +159,8 @@
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="Editor.cpp" />
     <ClCompile Include="Geometry.cpp" />
+    <ClCompile Include="LineRenderer.cpp" />
+    <ClCompile Include="Libraries\source\ImGuizmo\ImGuizmo.cpp" />
     <ClCompile Include="glad.c" />
     <ClCompile Include="IBL.cpp" />
     <ClCompile Include="Light.cpp" />
@@ -205,6 +207,11 @@
     <ClInclude Include="GameObject.h" />
     <ClInclude Include="Scene.h" />
     <ClInclude Include="Transform.h" />
+    <ClInclude Include="EditorCommand.h" />
+    <ClInclude Include="Picking.h" />
+    <ClInclude Include="PrimitiveLibrary.h" />
+    <ClInclude Include="LineRenderer.h" />
+    <ClInclude Include="Libraries\source\ImGuizmo\ImGuizmo.h" />
     <ClInclude Include="Geometry.h" />
     <ClInclude Include="GLUtils.h" />
     <ClInclude Include="IBL.h" />
