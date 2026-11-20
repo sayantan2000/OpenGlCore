@@ -80,7 +80,8 @@ void Editor::Init(GLFWwindow* window, Camera* cam, const PrimitiveLibrary* prims
 	ImGui_ImplOpenGL3_Init("#version 330");
 	initialized = true;
 	Log("Editor initialized (Dear ImGui + ImGuizmo).");
-	Log("Hold RIGHT mouse to fly (WASD). Left-click to select. W/E/R = move/rotate/scale, F = focus.");
+	Log("Nav: RIGHT-mouse fly (WASD) | scroll = zoom | Alt+LEFT = orbit selection | MIDDLE = pan.");
+	Log("Left-click select | W/E/R move/rotate/scale | F focus | Ctrl+S/O save/load | Play/Stop.");
 }
 
 void Editor::Shutdown()
@@ -161,6 +162,7 @@ void Editor::BuildUI(Scene& scene, RenderSettings& settings,
 	// Viewport interaction: gizmo first (so IsOver/IsUsing are valid), then picking, shortcuts.
 	DrawGizmo(scene, view, proj);
 	HandlePicking(scene, view, proj);
+	HandleCameraNavigation(scene);
 	HandleShortcuts(scene);
 }
 
@@ -613,7 +615,7 @@ void Editor::HandlePicking(Scene& scene, const glm::mat4& view, const glm::mat4&
 	static bool pressedInViewport = false;
 	static ImVec2 pressPos;
 
-	if (inViewport && !overUI && !overGizmo && !navigating &&
+	if (inViewport && !overUI && !overGizmo && !navigating && !io.KeyAlt &&
 		ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 	{
 		pressedInViewport = true;
@@ -645,6 +647,61 @@ void Editor::HandlePicking(Scene& scene, const glm::mat4& view, const glm::mat4&
 			if (bestId != 0) { scene.SelectById(bestId); Log("Selected: " + std::string(scene.FindById(bestId)->name)); }
 			else scene.Deselect(); // clicking empty space deselects
 		}
+	}
+}
+
+// ---------------------------------------------------------------------------------------
+// Camera navigation: scroll-zoom, Alt+LMB orbit around the selection, middle-mouse pan.
+// Complements the RMB flythrough (handled by Camera::Inputs). Unity-style.
+// ---------------------------------------------------------------------------------------
+void Editor::HandleCameraNavigation(Scene& scene)
+{
+	if (!camera) return;
+	ImGuiIO& io = ImGui::GetIO();
+
+	ImVec2 m = io.MousePos;
+	bool inViewport =
+		m.x >= viewportRect.x && m.x <= viewportRect.x + viewportRect.z &&
+		m.y >= viewportRect.y && m.y <= viewportRect.y + viewportRect.w;
+	if (!inViewport || io.WantCaptureMouse || ImGuizmo::IsUsing()) return;
+	if (ImGui::IsMouseDown(ImGuiMouseButton_Right)) return; // RMB flythrough owns the camera
+
+	// Pivot: the selected object's world position, else a point in front of the camera.
+	glm::vec3 fwd = glm::length(camera->Orientation) > 1e-4f ? glm::normalize(camera->Orientation) : glm::vec3(0, 0, -1);
+	glm::vec3 pivot;
+	if (GameObject* sel = scene.SelectedObject())
+		pivot = scene.WorldPosition(sel);
+	else
+		pivot = camera->Position + fwd * 10.0f;
+
+	float dist = glm::max(glm::length(camera->Position - pivot), 0.05f);
+	glm::vec3 right = glm::normalize(glm::cross(fwd, camera->Up));
+	glm::vec3 up = glm::normalize(glm::cross(right, fwd));
+
+	// --- Scroll to zoom (dolly along the view direction; speed scales with distance) ---
+	if (io.MouseWheel != 0.0f)
+		camera->Position += fwd * io.MouseWheel * (dist * 0.15f + 0.4f);
+
+	glm::vec2 d(io.MouseDelta.x, io.MouseDelta.y);
+
+	// --- Alt + Left drag: orbit around the pivot ---
+	if (io.KeyAlt && ImGui::IsMouseDown(ImGuiMouseButton_Left) && (d.x != 0.0f || d.y != 0.0f))
+	{
+		glm::vec3 offset = camera->Position - pivot;
+		offset = glm::rotate(offset, glm::radians(-d.x * 0.3f), camera->Up);          // yaw
+		glm::vec3 pitched = glm::rotate(offset, glm::radians(-d.y * 0.3f), right);     // pitch
+		// Reject pitch that gets too close to the poles (avoid flipping).
+		if (std::abs(glm::dot(glm::normalize(pitched), camera->Up)) < 0.985f)
+			offset = pitched;
+		camera->Position = pivot + offset;
+		camera->Orientation = glm::normalize(pivot - camera->Position);
+	}
+
+	// --- Middle drag: pan (screen-space translate; scales with distance) ---
+	if (ImGui::IsMouseDown(ImGuiMouseButton_Middle) && (d.x != 0.0f || d.y != 0.0f))
+	{
+		float panScale = dist * 0.0015f;
+		camera->Position += (-right * d.x + up * d.y) * panScale;
 	}
 }
 

@@ -33,8 +33,10 @@ organized into small RAII modules; `main.cpp` is just an entry point.
   (`build.ps1 -Run` handles it). SKYBOX/ is also copied for the HDRI.
 - **Editor controls**: FIXED layout — Hierarchy (left), Scene Viewport (centre, the 3D shows
   through), unified Inspector (right), Console (bottom). **Left-click** an object in the
-  viewport or Hierarchy to select (empty-space click deselects). **Hold RIGHT mouse** to fly
-  (WASD + Shift sprint, Space/Ctrl up/down, mouse look). Transform gizmos (ImGuizmo): **W**
+  viewport or Hierarchy to select (empty-space click deselects). Navigation (Unity-style):
+  **Hold RIGHT mouse** to fly (WASD + Shift sprint, Space/Ctrl up/down, mouse look); **scroll**
+  to zoom; **Alt + LEFT-drag** to orbit around the selection; **MIDDLE-drag** to pan.
+  Transform gizmos (ImGuizmo): **W**
   translate, **E** rotate, **R** scale (Gizmo menu toggles world/local). **F** or Hierarchy
   double-click focuses the selection. **Delete** deletes, **Ctrl+D** duplicates, **Ctrl+Z/
   Ctrl+Y** undo/redo, **Ctrl+S / Ctrl+O** save/load scene (File menu; default `scene.json`).

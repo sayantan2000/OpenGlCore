@@ -68,6 +68,7 @@ private:
 	void DrawHistoryPanel();
 
 	// Viewport interaction
+	void HandleCameraNavigation(Scene& scene); // scroll-zoom, Alt+LMB orbit, MMB pan
 	void HandlePicking(Scene& scene, const glm::mat4& view, const glm::mat4& proj);
 	void DrawGizmo(Scene& scene, const glm::mat4& view, const glm::mat4& proj);
 	void HandleShortcuts(Scene& scene);

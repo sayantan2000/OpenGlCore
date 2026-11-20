@@ -53,7 +53,9 @@ Make what already exists persistent and composable. Highest return, low risk.
 ## Tier 5 — Content pipeline & polish
 - [ ] **Model PBR-map import** in `Model` (normal/metallic/roughness/AO, not just diffuse).
 - [ ] **Prefabs** — reusable GameObject templates instantiated into scenes.
-- [ ] **Editor UX** — gizmo snapping, multi-select, stencil mesh-outline selection, orbit/pan camera.
+- [x] **Editor camera navigation** — scroll-zoom, Alt+LMB orbit around selection, middle-mouse
+      pan (Unity-style), complementing RMB flythrough.
+- [ ] **Editor UX** — gizmo snapping, multi-select, stencil mesh-outline selection.
 - [ ] **Audio** (miniaudio / OpenAL) — 2D then 3D positional.
 - [ ] **In-game UI / text** rendering (the FreeType HUD generalized to a UI layer).
 - [ ] **Hot-reload** for shaders, then assets.
