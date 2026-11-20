@@ -1,20 +1,16 @@
 #include"Texture.h"
 #include"GLUtils.h"
 #include<stdexcept>
+#include<iostream>
 
-Texture::Texture(const char* image, GLenum texType, GLenum slot, GLenum format, GLenum pixelType)
+Texture::Texture(const char* image, GLenum texType, GLenum slot, GLenum /*format*/, GLenum /*pixelType*/)
 {
-	// Assigns the type of the texture ot the texture object
 	type = texType;
-	// Remember which texture unit this texture belongs to (slot is GL_TEXTURE0 + n),
-	// so Bind() activates the correct unit. Previously left uninitialized.
+	// Remember which texture unit this texture belongs to (slot is GL_TEXTURE0 + n).
 	unit = slot - GL_TEXTURE0;
 
-	// Stores the width, height, and the number of color channels of the image
 	int widthImg, heightImg, numColCh;
-	// Flips the image so it appears right side up
-	stbi_set_flip_vertically_on_load(true);
-	// Reads the image from a file and stores it in bytes
+	stbi_set_flip_vertically_on_load(true); // OpenGL's origin is bottom-left
 	unsigned char* bytes = stbi_load(image, &widthImg, &heightImg, &numColCh, 0);
 	if (bytes == nullptr)
 	{
@@ -25,33 +21,31 @@ Texture::Texture(const char* image, GLenum texType, GLenum slot, GLenum format, 
 		throw std::runtime_error(msg);
 	}
 
-	// Generates an OpenGL texture object
+	// Choose the GL format from the image's ACTUAL channel count. Previously the format was
+	// forced to the caller's value (GL_RGB) regardless of the file: uploading a grayscale
+	// (1-channel) map such as Roughness/AO as RGB makes GL read 3x the bytes per row, shearing
+	// every row and producing a "scattered" texture. Also relax the unpack alignment so rows
+	// whose byte length isn't a multiple of 4 (common for 1/3-channel images) aren't misread.
+	GLenum fmt =
+		(numColCh == 1) ? GL_RED :
+		(numColCh == 2) ? GL_RG :
+		(numColCh == 4) ? GL_RGBA : GL_RGB;
+
 	glGenTextures(1, &ID);
-	// Assigns the texture to a Texture Unit
 	glActiveTexture(slot);
 	glBindTexture(texType, ID);
 
-	// Configures the type of algorithm that is used to make the image smaller or bigger
-	glTexParameteri(texType, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
+	glTexParameteri(texType, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 	glTexParameteri(texType, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-	// Configures the way the texture repeats (if it does at all)
 	glTexParameteri(texType, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(texType, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-	// Extra lines in case you choose to use GL_CLAMP_TO_BORDER
-	// float flatColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
-	// glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, flatColor);
-
-	// Assigns the image to the OpenGL Texture object
-	glTexImage2D(texType, 0, GL_RGBA, widthImg, heightImg, 0, format, pixelType, bytes);
-	// Generates MipMaps
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	glTexImage2D(texType, 0, fmt, widthImg, heightImg, 0, fmt, GL_UNSIGNED_BYTE, bytes);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 4); // restore default
 	glGenerateMipmap(texType);
 
-	// Deletes the image data as it is already in the OpenGL Texture object
 	stbi_image_free(bytes);
-
-	// Unbinds the OpenGL Texture object so that it can't accidentally be modified
 	glBindTexture(texType, 0);
 	glCheckError();
 }

@@ -4,6 +4,7 @@
 #include "Time.h"
 #include "SceneIO.h"
 #include "ScriptRegistry.h"
+#include <stb/stb_image_write.h>
 #include <cstdlib>
 #include <iostream>
 #include <glm/gtc/matrix_transform.hpp>
@@ -615,6 +616,30 @@ void Application::Run()
 
 		std::cout << "[SELFTEST] "
 			<< ((saved && loaded && reloaded.Count() == before && scriptsOk && physicsOk) ? "PASS" : "FAIL") << std::endl;
+		return;
+	}
+
+	// Headless screenshot: frame the chair, render a few frames, save a PNG, and exit.
+	bool screenshot = false;
+	{ size_t len = 0; char buf[8]; if (getenv_s(&len, buf, sizeof(buf), "OGL_SCREENSHOT") == 0 && len > 0) screenshot = true; }
+	if (screenshot)
+	{
+		camera->Position = glm::vec3(2.2f, 3.4f, 5.0f);
+		camera->Orientation = glm::normalize(glm::vec3(-0.35f, -0.18f, -1.0f));
+		for (int i = 0; i < 4; ++i)
+		{
+			camera->updateMatrix(fov, 0.1f, 200.0f);
+			RenderSceneHDR();
+			TonemapToScreen();
+			hud->RenderText("screenshot", 25.0f, (float)fbHeight - 60.0f, 0.6f, glm::vec3(0.9f));
+			window.SwapBuffers();
+			window.PollEvents();
+		}
+		std::vector<unsigned char> px((size_t)fbWidth * fbHeight * 3);
+		glReadPixels(0, 0, fbWidth, fbHeight, GL_RGB, GL_UNSIGNED_BYTE, px.data());
+		stbi_flip_vertically_on_write(1);
+		stbi_write_png("screenshot.png", fbWidth, fbHeight, 3, px.data(), fbWidth * 3);
+		std::cout << "[SCREENSHOT] wrote screenshot.png (" << fbWidth << "x" << fbHeight << ")" << std::endl;
 		return;
 	}
 

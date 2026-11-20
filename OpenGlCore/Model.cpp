@@ -13,11 +13,13 @@
 // Uploads 8-bit image data as a GL texture with mipmaps; returns the texture id.
 static GLuint MakeGLTexture(const unsigned char* data, int w, int h, int channels)
 {
-	GLenum format = (channels == 1) ? GL_RED : (channels == 3) ? GL_RGB : GL_RGBA;
+	GLenum format = (channels == 1) ? GL_RED : (channels == 2) ? GL_RG : (channels == 3) ? GL_RGB : GL_RGBA;
 	GLuint id = 0;
 	glGenTextures(1, &id);
 	glBindTexture(GL_TEXTURE_2D, id);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // rows may not be 4-byte aligned (1/3-channel images)
 	glTexImage2D(GL_TEXTURE_2D, 0, format, w, h, 0, format, GL_UNSIGNED_BYTE, data);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 	glGenerateMipmap(GL_TEXTURE_2D);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
