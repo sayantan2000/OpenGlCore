@@ -95,6 +95,20 @@ public:
 
 	std::vector<std::unique_ptr<GameObject>>& Objects() { return objects; }
 
+	// The game camera to render through in Play mode: a main camera if any, else the first
+	// enabled one, else nullptr (renderer falls back to the editor scene camera).
+	GameObject* ActiveCamera()
+	{
+		GameObject* first = nullptr;
+		for (auto& o : objects)
+		{
+			if (!o->active || !o->cameraComp || !o->cameraComp->enabled) continue;
+			if (o->cameraComp->isMain) return o.get();
+			if (!first) first = o.get();
+		}
+		return first;
+	}
+
 	// --- Hierarchy ------------------------------------------------------------------------
 	// World matrix = (parent world) * (local). Walks the parent chain with a depth guard so a
 	// corrupt/cyclic link can't loop forever.

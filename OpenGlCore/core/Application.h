@@ -43,6 +43,9 @@ private:
 	void CreateHdrTarget(int w, int h);
 	void DestroyHdrTarget();
 	void ResizeIfNeeded();            // recreate size-dependent targets on framebuffer resize
+	// Picks the camera to render through this frame: the active game camera's transform in
+	// Play mode, else the editor's free-fly scene camera. Fills the active* members below.
+	void UpdateActiveCamera(bool playing);
 	void RenderSceneHDR();     // iterate the Scene into the HDR framebuffer + skybox
 	void RenderLightGizmos();  // wireframe overlays for lights (incl. rectangle area lights)
 	void RenderSelectionOutline(); // stencil silhouette around the selected object
@@ -83,6 +86,14 @@ private:
 
 	std::string hudText = "FPS: --";
 	float fov = 60.0f;
+
+	// The camera actually used for rendering this frame (editor scene camera in Edit mode,
+	// the active game camera in Play mode). Set by UpdateActiveCamera().
+	glm::mat4 activeView = glm::mat4(1.0f);
+	glm::mat4 activeProj = glm::mat4(1.0f);
+	glm::mat4 activeViewProj = glm::mat4(1.0f);
+	glm::vec3 activeCamPos = glm::vec3(0.0f);
+	bool usingGameCamera = false;
 };
 
 

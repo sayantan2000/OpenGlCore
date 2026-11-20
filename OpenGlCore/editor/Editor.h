@@ -54,6 +54,7 @@ public:
 	void EndFrame();                         // render draw data
 
 	bool IsPlaying() const { return isPlaying; }
+	void SetPlayMode(Scene& scene, bool play); // public entry (menu button uses the privates)
 
 	// True while ImGui is using the mouse/keyboard (camera should ignore input).
 	bool WantCaptureMouse() const;
@@ -84,6 +85,7 @@ private:
 	void CreateEmpty(Scene& scene);
 	void CreatePrimitive(Scene& scene, PrimitiveType type);
 	void CreateLight(Scene& scene, int lightType); // LightComponent::Type as int
+	void CreateCamera(Scene& scene);
 	void DuplicateSelected(Scene& scene);
 	void DeleteSelected(Scene& scene);
 	GameObject* Commit(Scene& scene, std::unique_ptr<GameObject> go, const char* label);

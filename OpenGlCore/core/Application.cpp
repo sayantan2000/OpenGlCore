@@ -7,6 +7,7 @@
 #include <stb/stb_image_write.h>
 #include <cstdlib>
 #include <iostream>
+#include <array>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <stdexcept>
@@ -211,6 +212,21 @@ void Application::BuildScene()
 		scene->Add(std::move(go));
 	}
 
+	// --- Main game camera (used to render in Play mode; distinct from the editor scene camera) ---
+	{
+		auto go = std::make_unique<GameObject>();
+		go->name = "Main Camera";
+		glm::vec3 pos(9.0f, 4.0f, 11.0f);
+		go->transform.position = pos;
+		glm::vec3 fwd = glm::normalize(glm::vec3(0.0f, 2.0f, 0.0f) - pos); // look at the scene
+		go->transform.rotationEuler = glm::vec3(
+			glm::degrees(std::asin(glm::clamp(fwd.y, -1.0f, 1.0f))),
+			glm::degrees(std::atan2(-fwd.x, -fwd.z)), 0.0f);
+		CameraComponent cc; cc.isMain = true; cc.fov = 55.0f;
+		go->cameraComp = cc;
+		scene->Add(std::move(go));
+	}
+
 	scene->Select(0);
 }
 
@@ -334,6 +350,32 @@ void Application::ResizeIfNeeded()
 	CreateHdrTarget(w, h);
 }
 
+void Application::UpdateActiveCamera(bool playing)
+{
+	GameObject* gcam = playing ? scene->ActiveCamera() : nullptr;
+	if (gcam)
+	{
+		glm::mat4 world = scene->WorldMatrix(gcam);
+		glm::vec3 pos = glm::vec3(world[3]);
+		glm::vec3 fwd = -glm::normalize(glm::vec3(world[2])); // camera looks down local -Z
+		glm::vec3 up = glm::normalize(glm::vec3(world[1]));
+		const CameraComponent& c = *gcam->cameraComp;
+		activeView = glm::lookAt(pos, pos + fwd, up);
+		activeProj = glm::perspective(glm::radians(c.fov), (float)fbWidth / (float)fbHeight, c.nearClip, c.farClip);
+		activeCamPos = pos;
+		usingGameCamera = true;
+	}
+	else
+	{
+		camera->updateMatrix(fov, 0.1f, 200.0f);
+		activeView = camera->GetViewMatrix();
+		activeProj = camera->GetProjectionMatrix(fov, 0.1f, 200.0f);
+		activeCamPos = camera->Position;
+		usingGameCamera = false;
+	}
+	activeViewProj = activeProj * activeView;
+}
+
 void Application::RenderSceneHDR()
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
@@ -349,8 +391,8 @@ void Application::RenderSceneHDR()
 	std::uint32_t selId = scene->SelectedId();
 
 	pbrShader->Activate();
-	pbrShader->SetUniformValueVec3("u_camPos", camera->Position);
-	camera->Matrix(*pbrShader, "camMatrix");
+	pbrShader->SetUniformValueVec3("u_camPos", activeCamPos);
+	glUniformMatrix4fv(glGetUniformLocation(pbrShader->ID, "camMatrix"), 1, GL_FALSE, glm::value_ptr(activeViewProj));
 
 	LightSet ls = GatherLights();
 	ls.Upload(*pbrShader);
@@ -376,27 +418,29 @@ void Application::RenderSceneHDR()
 	}
 	glStencilMask(0x00);
 
-	RenderSelectionOutline();
+	if (!editor.IsPlaying()) RenderSelectionOutline();
 
 	glDisable(GL_STENCIL_TEST);
 	glStencilMask(0xFF); // restore so the next frame's clear works
 
-	RenderInfiniteGrid();
+	// Editor overlays (grid, light gizmos) are a Scene-view aid: hide them in Play mode so the
+	// game camera shows a clean "Game view". Physics debug stays controlled by its own toggle.
+	if (!editor.IsPlaying())
+	{
+		RenderInfiniteGrid();
+		RenderLightGizmos();
+	}
 	RenderPhysicsDebug();
-	RenderLightGizmos();
 
 	if (settings.showSkybox)
-		ibl->RenderBackground(
-			camera->GetProjectionMatrix(fov, 0.1f, 200.0f),
-			camera->GetViewMatrix(),
-			settings.skyboxIntensity);
+		ibl->RenderBackground(activeProj, activeView, settings.skyboxIntensity);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void Application::RenderLightGizmos()
 {
-	const glm::mat4 viewProj = camera->cameraMatrix; // proj * view (updated this frame)
+	const glm::mat4 viewProj = activeViewProj; // proj * view (active camera this frame)
 
 	// Light wireframes (yellow).
 	for (auto& go : scene->Objects())
@@ -444,6 +488,31 @@ void Application::RenderLightGizmos()
 		}
 	}
 	lines->Flush(viewProj, glm::vec3(1.0f, 0.85f, 0.2f));
+
+	// Camera frustum gizmos (white) so game cameras are visible in the Scene view.
+	for (auto& go : scene->Objects())
+	{
+		if (!go->active || !go->cameraComp) continue;
+		const CameraComponent& cc = *go->cameraComp;
+		glm::mat4 world = scene->WorldMatrix(go.get());
+		glm::vec3 pos(world[3]);
+		glm::vec3 right = glm::normalize(glm::vec3(world[0]));
+		glm::vec3 up = glm::normalize(glm::vec3(world[1]));
+		glm::vec3 fwd = -glm::normalize(glm::vec3(world[2]));
+		float aspect = (fbHeight > 0) ? (float)fbWidth / (float)fbHeight : 1.7778f;
+		float nd = 0.4f, fd = 3.0f;                 // gizmo near/far distances (icon-sized)
+		float tv = std::tan(glm::radians(cc.fov) * 0.5f);
+		auto rect = [&](float d) {
+			float hh = tv * d, hw = hh * aspect;
+			glm::vec3 c = pos + fwd * d;
+			return std::array<glm::vec3, 4>{ c - right * hw - up * hh, c + right * hw - up * hh,
+				c + right * hw + up * hh, c - right * hw + up * hh };
+		};
+		auto n = rect(nd); auto f = rect(fd);
+		for (int i = 0; i < 4; ++i) { lines->AddLine(n[i], n[(i + 1) % 4]); lines->AddLine(f[i], f[(i + 1) % 4]); lines->AddLine(n[i], f[i]); }
+		for (int i = 0; i < 4; ++i) lines->AddLine(pos, n[i]); // apex lines
+	}
+	lines->Flush(viewProj, glm::vec3(0.9f, 0.9f, 0.95f));
 }
 
 void Application::RenderSelectionOutline()
@@ -459,7 +528,7 @@ void Application::RenderSelectionOutline()
 	glDisable(GL_DEPTH_TEST);
 
 	outlineShader->Activate();
-	glm::mat4 mvp = camera->cameraMatrix * scene->WorldMatrix(sel);
+	glm::mat4 mvp = activeViewProj * scene->WorldMatrix(sel);
 	float localDiag = glm::length(mr.localMax - mr.localMin);
 	glUniformMatrix4fv(glGetUniformLocation(outlineShader->ID, "u_mvp"), 1, GL_FALSE, glm::value_ptr(mvp));
 	glUniform1f(glGetUniformLocation(outlineShader->ID, "u_thickness"), 0.02f * localDiag);
@@ -480,7 +549,7 @@ void Application::RenderInfiniteGrid()
 	// A procedural, camera-independent ground grid: a full-screen triangle whose fragments
 	// reconstruct the world position on the y=0 plane (see grid.vert/frag). Depth is written so
 	// scene geometry occludes it; alpha-blended with distance fade to avoid a hard boundary.
-	glm::mat4 vp = camera->cameraMatrix;
+	glm::mat4 vp = activeViewProj;
 	glm::mat4 inv = glm::inverse(vp);
 
 	glEnable(GL_BLEND);
@@ -491,11 +560,11 @@ void Application::RenderInfiniteGrid()
 	gridShader->Activate();
 	glUniformMatrix4fv(glGetUniformLocation(gridShader->ID, "u_invViewProj"), 1, GL_FALSE, glm::value_ptr(inv));
 	glUniformMatrix4fv(glGetUniformLocation(gridShader->ID, "u_viewProj"), 1, GL_FALSE, glm::value_ptr(vp));
-	glUniform3fv(glGetUniformLocation(gridShader->ID, "u_camPos"), 1, glm::value_ptr(camera->Position));
+	glUniform3fv(glGetUniformLocation(gridShader->ID, "u_camPos"), 1, glm::value_ptr(activeCamPos));
 	float spacing = settings.gridSpacing > 0.0f ? settings.gridSpacing : 1.0f;
 	glUniform1f(glGetUniformLocation(gridShader->ID, "u_spacing"), spacing);
 	// Fade relative to how high the camera is, so the grid stays stable while flying.
-	float h = glm::max(std::abs(camera->Position.y), 1.0f);
+	float h = glm::max(std::abs(activeCamPos.y), 1.0f);
 	glUniform1f(glGetUniformLocation(gridShader->ID, "u_fadeStart"), h * 4.0f + 20.0f);
 	glUniform1f(glGetUniformLocation(gridShader->ID, "u_fadeEnd"), h * 20.0f + 120.0f);
 
@@ -514,7 +583,7 @@ void Application::RenderPhysicsDebug()
 	if (dl.empty()) return;
 
 	// Group by colour so each flush is one draw (collider green vs trigger blue).
-	const glm::mat4 viewProj = camera->cameraMatrix;
+	const glm::mat4 viewProj = activeViewProj;
 	auto flushColor = [&](const glm::vec3& c)
 	{
 		bool any = false;
@@ -621,19 +690,26 @@ void Application::Run()
 		return;
 	}
 
-	// Headless screenshot: frame the chair, render a few frames, save a PNG, and exit.
-	bool screenshot = false;
-	{ size_t len = 0; char buf[8]; if (getenv_s(&len, buf, sizeof(buf), "OGL_SCREENSHOT") == 0 && len > 0) screenshot = true; }
-	if (screenshot)
+	// Headless screenshot. OGL_SCREENSHOT=1 renders the editor (scene camera); =play renders
+	// through the active game camera (Play mode) to verify the camera switch.
+	char ssVal[8] = {}; size_t ssLen = 0; getenv_s(&ssLen, ssVal, sizeof(ssVal), "OGL_SCREENSHOT");
+	if (ssLen > 0)
 	{
-		camera->Position = glm::vec3(2.2f, 3.4f, 5.0f);
-		camera->Orientation = glm::normalize(glm::vec3(-0.35f, -0.18f, -1.0f));
+		bool playShot = (std::string(ssVal) == "play");
+		if (playShot)
+			editor.SetPlayMode(*scene, true);
+		else
+		{
+			camera->Position = glm::vec3(2.2f, 3.4f, 5.0f);
+			camera->Orientation = glm::normalize(glm::vec3(-0.35f, -0.18f, -1.0f));
+		}
 		for (int i = 0; i < 4; ++i)
 		{
-			camera->updateMatrix(fov, 0.1f, 200.0f);
+			if (playShot) editor.Update(*scene, 1.0f / 60.0f); // tick scripts/physics
+			UpdateActiveCamera(playShot);
 			RenderSceneHDR();
 			TonemapToScreen();
-			hud->RenderText("screenshot", 25.0f, (float)fbHeight - 60.0f, 0.6f, glm::vec3(0.9f));
+			hud->RenderText(playShot ? "game camera" : "scene camera", 25.0f, (float)fbHeight - 60.0f, 0.6f, glm::vec3(0.9f));
 			window.SwapBuffers();
 			window.PollEvents();
 		}
@@ -641,7 +717,8 @@ void Application::Run()
 		glReadPixels(0, 0, fbWidth, fbHeight, GL_RGB, GL_UNSIGNED_BYTE, px.data());
 		stbi_flip_vertically_on_write(1);
 		stbi_write_png("screenshot.png", fbWidth, fbHeight, 3, px.data(), fbWidth * 3);
-		std::cout << "[SCREENSHOT] wrote screenshot.png (" << fbWidth << "x" << fbHeight << ")" << std::endl;
+		std::cout << "[SCREENSHOT] wrote screenshot.png (" << fbWidth << "x" << fbHeight << ", "
+			<< (playShot ? "game camera" : "scene camera") << ")" << std::endl;
 		return;
 	}
 
@@ -669,21 +746,25 @@ void Application::Run()
 			frameCount = 0;
 		}
 
-		// Matrices for this frame's gizmo / picking.
-		camera->updateMatrix(fov, 0.1f, 200.0f);
-		glm::mat4 view = camera->GetViewMatrix();
-		glm::mat4 proj = camera->GetProjectionMatrix(fov, 0.1f, 200.0f);
+		const bool playing = editor.IsPlaying();
+
+		// Active camera for the UI (gizmo/picking align with what's rendered): the game camera
+		// in Play, the editor scene camera in Edit.
+		UpdateActiveCamera(playing);
 
 		// Build the editor UI (handles selection, gizmo, shortcuts, focus) so capture flags
 		// reflect this frame's interaction.
 		editor.BeginFrame();
-		editor.BuildUI(*scene, settings, view, proj, fbWidth, fbHeight, Time::_DeltaTime);
-		editor.Update(*scene, Time::_DeltaTime); // tick scripts while in Play mode
+		editor.BuildUI(*scene, settings, activeView, activeProj, fbWidth, fbHeight, Time::_DeltaTime);
+		editor.Update(*scene, Time::_DeltaTime); // tick scripts/physics while in Play mode
 
-		// Camera flythrough only when ImGui/gizmo aren't capturing input.
-		if (!editor.WantCaptureMouse() && !editor.WantCaptureKeyboard() && !editor.WantCaptureViewport())
+		// Scene-camera flythrough only in Edit mode (Play renders through the game camera) and
+		// only when ImGui/gizmo aren't capturing input.
+		if (!playing && !editor.WantCaptureMouse() && !editor.WantCaptureKeyboard() && !editor.WantCaptureViewport())
 			camera->Inputs(window.Handle(), Time::_DeltaTime);
-		camera->updateMatrix(fov, 0.1f, 200.0f); // reflect any movement for the render pass
+
+		// Recompute after scripts/physics (and camera input) moved things, for the render pass.
+		UpdateActiveCamera(playing);
 
 		RenderSceneHDR();
 		TonemapToScreen();

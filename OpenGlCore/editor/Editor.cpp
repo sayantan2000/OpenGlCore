@@ -191,6 +191,7 @@ void Editor::DrawMainMenuBar(Scene& scene, RenderSettings& settings)
 	if (ImGui::BeginMenu("Create"))
 	{
 		if (ImGui::MenuItem("Empty GameObject")) CreateEmpty(scene);
+		if (ImGui::MenuItem("Camera")) CreateCamera(scene);
 		if (ImGui::BeginMenu("Primitive"))
 		{
 			if (ImGui::MenuItem("Cube"))     CreatePrimitive(scene, PrimitiveType::Cube);
@@ -364,6 +365,7 @@ void Editor::DrawHierarchy(Scene& scene)
 		ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
 	{
 		if (ImGui::MenuItem("Empty GameObject")) CreateEmpty(scene);
+		if (ImGui::MenuItem("Camera")) CreateCamera(scene);
 		if (ImGui::BeginMenu("Primitive"))
 		{
 			if (ImGui::MenuItem("Cube"))     CreatePrimitive(scene, PrimitiveType::Cube);
@@ -595,6 +597,25 @@ void Editor::DrawInspector(Scene& scene, RenderSettings& settings)
 			}
 		}
 	}
+	// Camera (game camera that renders in Play mode)
+	{
+		if (go->cameraComp)
+		{
+			if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				CameraComponent& cc = *go->cameraComp;
+				ImGui::DragFloat("Field of View", &cc.fov, 0.5f, 10.0f, 170.0f); TrackEdit(scene, go, "Camera FOV");
+				ImGui::DragFloat("Near Clip", &cc.nearClip, 0.01f, 0.001f, 100.0f); TrackEdit(scene, go, "Near Clip");
+				ImGui::DragFloat("Far Clip", &cc.farClip, 1.0f, 1.0f, 10000.0f); TrackEdit(scene, go, "Far Clip");
+				bool m = cc.isMain;
+				if (ImGui::Checkbox("Main Camera", &m)) { GameObject b = *go; cc.isMain = m; history.Push(std::make_unique<ModifyCommand>(go->id, b, *go, "Main Camera")); }
+				ImGui::TextDisabled("Play mode renders through this camera.");
+			}
+		}
+		else if (ImGui::Button("Add Camera"))
+		{ GameObject b = *go; go->cameraComp = CameraComponent{}; history.Push(std::make_unique<ModifyCommand>(go->id, b, *go, "Add Camera")); }
+	}
+
 	// Rigidbody
 	{
 		const char* kBodyTypes[] = { "Static", "Dynamic", "Kinematic" };
@@ -1000,6 +1021,25 @@ void Editor::CreateLight(Scene& scene, int lightType)
 	Commit(scene, std::move(go), "Create Light");
 }
 
+void Editor::CreateCamera(Scene& scene)
+{
+	auto go = std::make_unique<GameObject>();
+	go->name = "Camera";
+	// Place it where the editor camera is now, looking the same way, so Play starts framed well.
+	if (camera)
+	{
+		go->transform.position = camera->Position;
+		glm::vec3 fwd = glm::length(camera->Orientation) > 1e-4f ? glm::normalize(camera->Orientation) : glm::vec3(0, 0, -1);
+		float yaw = glm::degrees(std::atan2(-fwd.x, -fwd.z));
+		float pitch = glm::degrees(std::asin(glm::clamp(fwd.y, -1.0f, 1.0f)));
+		go->transform.rotationEuler = glm::vec3(pitch, yaw, 0.0f);
+	}
+	CameraComponent cc;
+	cc.isMain = (scene.ActiveCamera() == nullptr); // first camera becomes main
+	go->cameraComp = cc;
+	Commit(scene, std::move(go), "Create Camera");
+}
+
 void Editor::DuplicateSelected(Scene& scene)
 {
 	GameObject* src = scene.SelectedObject();
@@ -1081,6 +1121,11 @@ void Editor::ExitPlayMode(Scene& scene)
 	history.Clear(); // objects were rebuilt from the snapshot
 	isPlaying = false;
 	Log("Stop: scene restored to pre-play state.");
+}
+
+void Editor::SetPlayMode(Scene& scene, bool play)
+{
+	if (play) EnterPlayMode(scene); else ExitPlayMode(scene);
 }
 
 void Editor::Update(Scene& scene, float dt)

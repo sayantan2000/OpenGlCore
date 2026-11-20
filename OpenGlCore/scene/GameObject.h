@@ -105,6 +105,18 @@ struct ColliderComponent
 	bool enabled = true;
 };
 
+// A game camera that lives in the scene (Unity-style). The editor's free-fly "scene camera"
+// is used only in Edit mode; in Play mode the renderer views the scene through the active
+// game camera's world transform (looking down its local -Z). Plain data (serializable).
+struct CameraComponent
+{
+	float fov = 60.0f;        // vertical field of view, degrees
+	float nearClip = 0.1f;
+	float farClip = 500.0f;
+	bool isMain = true;       // the main camera is preferred when several exist
+	bool enabled = true;
+};
+
 // A scene object: a stable id, a name, an active flag, a transform, and optional
 // components. Kept deliberately simple (optional components, not a generic ECS) per the
 // project's scope. `id` is assigned by the Scene and stays constant for the object's
@@ -122,6 +134,7 @@ struct GameObject
 	std::optional<ScriptComponent> script;
 	std::optional<RigidBodyComponent> rigidBody;
 	std::optional<ColliderComponent> collider;
+	std::optional<CameraComponent> cameraComp;
 
 	// Short type label for the Inspector header.
 	const char* TypeLabel() const
@@ -136,6 +149,7 @@ struct GameObject
 			case LightComponent::Type::Rect:        return "Rectangle Light";
 			}
 		}
+		if (cameraComp) return "Camera";
 		if (meshRenderer) return "Mesh Object";
 		return "Empty";
 	}

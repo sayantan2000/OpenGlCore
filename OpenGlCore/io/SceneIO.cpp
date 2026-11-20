@@ -100,6 +100,11 @@ namespace
 					{"enabled", co.enabled},
 				};
 			}
+			if (go->cameraComp)
+			{
+				const CameraComponent& c = *go->cameraComp;
+				j["cameraComp"] = { {"fov", c.fov}, {"near", c.nearClip}, {"far", c.farClip}, {"isMain", c.isMain}, {"enabled", c.enabled} };
+			}
 			arr.push_back(std::move(j));
 		}
 		root["objects"] = std::move(arr);
@@ -251,6 +256,18 @@ namespace
 				}
 				co.enabled = c.value("enabled", true);
 				go->collider = co;
+			}
+
+			if (j.contains("cameraComp"))
+			{
+				const json& c = j["cameraComp"];
+				CameraComponent cc;
+				cc.fov = c.value("fov", 60.0f);
+				cc.nearClip = c.value("near", 0.1f);
+				cc.farClip = c.value("far", 500.0f);
+				cc.isMain = c.value("isMain", true);
+				cc.enabled = c.value("enabled", true);
+				go->cameraComp = cc;
 			}
 
 			scene.Add(std::move(go)); // preserves the saved id, keeps nextId monotonic
