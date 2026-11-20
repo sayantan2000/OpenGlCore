@@ -42,6 +42,7 @@ private:
 	void ResizeIfNeeded();            // recreate size-dependent targets on framebuffer resize
 	void RenderSceneHDR();     // iterate the Scene into the HDR framebuffer + skybox
 	void RenderLightGizmos();  // wireframe overlays for lights (incl. rectangle area lights)
+	void RenderSelectionOutline(); // stencil silhouette around the selected object
 	void TonemapToScreen();    // HDR -> default framebuffer (ACES + gamma)
 	LightSet GatherLights();   // build a LightSet from the scene's light objects
 
@@ -50,6 +51,7 @@ private:
 	std::unique_ptr<Camera> camera;
 	std::unique_ptr<Shader> pbrShader;
 	std::unique_ptr<Shader> hdrShader;
+	std::unique_ptr<Shader> outlineShader; // selection silhouette
 	std::unique_ptr<IBL>    ibl;
 	std::unique_ptr<Text>   hud;
 

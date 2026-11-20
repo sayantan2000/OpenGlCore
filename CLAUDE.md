@@ -37,8 +37,9 @@ organized into small RAII modules; `main.cpp` is just an entry point.
   **Hold RIGHT mouse** to fly (WASD + Shift sprint, Space/Ctrl up/down, mouse look); **scroll**
   to zoom; **Alt + LEFT-drag** to orbit around the selection; **MIDDLE-drag** to pan.
   Transform gizmos (ImGuizmo): **W**
-  translate, **E** rotate, **R** scale (Gizmo menu toggles world/local). **F** or Hierarchy
-  double-click focuses the selection. **Delete** deletes, **Ctrl+D** duplicates, **Ctrl+Z/
+  translate, **E** rotate, **R** scale (Gizmo menu toggles world/local; **hold Ctrl to snap**).
+  The selected object shows a stencil **outline**; a **grid floor** marks the XZ plane. **F** or
+  Hierarchy double-click focuses the selection. **Delete** deletes, **Ctrl+D** duplicates, **Ctrl+Z/
   Ctrl+Y** undo/redo, **Ctrl+S / Ctrl+O** save/load scene (File menu; default `scene.json`).
   Right-click the Hierarchy for the Create menu (Empty / Primitive / Light); **drag** a
   Hierarchy row onto another to **reparent** (drop on empty space to unparent). **Play / Stop**
@@ -76,8 +77,9 @@ Entry: `main.cpp` → `Application` (owns window, scene, render loop). Modules:
 - `ScriptBehavior.h` / `ScriptRegistry.{h,cpp}` / `ScriptSystem.{h,cpp}` — native C++ scripting:
   a `ScriptBehavior` base (`OnStart`/`OnUpdate` with a `ScriptContext`), a name→factory registry
   (built-ins: Rotator, FloatBob, WasdMover), and a system that owns live instances by object id
-  during Play. `GameObject` stores only the behavior name (`ScriptComponent`) so it stays
-  copyable/serializable.
+  during Play. `GameObject` stores only the behavior name + a params map (`ScriptComponent`) so
+  it stays copyable/serializable. Behaviors declare tunables via `DeclareParams` (editable in
+  the Inspector, serialized) and read them with `GetParam`.
 - `Editor` — Dear ImGui editor: fixed Hierarchy/Inspector/Console panels + central viewport
   rect, viewport ray-picking, ImGuizmo transform gizmos, keyboard shortcuts, camera focus,
   Hierarchy Create context menu (Empty/Primitive/Light), and undo/redo. Camera/tool input is
@@ -97,7 +99,8 @@ Entry: `main.cpp` → `Application` (owns window, scene, render loop). Modules:
 - `hdr.vert`/`hdr.frag` — fullscreen ACES tonemap + gamma.
 - IBL: `cubemap.vert`, `sky.frag`, `irradiance.frag`, `prefilter.frag`, `brdf.frag`,
   `background.vert`/`background.frag`.
-- `line.vert`/`line.frag` — editor line overlay (light gizmos, rect-light outline, selection AABB).
+- `line.vert`/`line.frag` — editor line overlay (grid floor, light gizmos, rect-light outline).
+- `outline.vert`/`outline.frag` — stencil selection silhouette (normal-extruded shell).
 - Legacy (still present, used by `Model::Draw` and older demos): `default.*`, `Light.*`,
   `albedo.frag`, `text.*`.
 

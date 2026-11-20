@@ -4,6 +4,7 @@
 #include <string>
 #include <optional>
 #include <cstdint>
+#include <map>
 #include <glm/glm.hpp>
 #include "Transform.h"
 #include "PbrMaterial.h"
@@ -56,7 +57,8 @@ struct LightComponent
 // ScriptSystem during Play mode and resolved by object id.
 struct ScriptComponent
 {
-	std::string behaviorName;   // key into the ScriptRegistry ("" = none)
+	std::string behaviorName;          // key into the ScriptRegistry ("" = none)
+	std::map<std::string, float> params; // per-object tunables (see ScriptBehavior::DeclareParams)
 	bool enabled = true;
 };
 

@@ -16,10 +16,13 @@ namespace
 	class Rotator : public ScriptBehavior
 	{
 	public:
-		float degreesPerSecond = 60.0f;
+		void DeclareParams(std::vector<ScriptParam>& out) const override
+		{
+			out.push_back({ "speed", 60.0f }); // degrees/second
+		}
 		void OnUpdate(ScriptContext& ctx) override
 		{
-			ctx.self.transform.rotationEuler.y += degreesPerSecond * ctx.deltaTime;
+			ctx.self.transform.rotationEuler.y += GetParam(ctx, "speed", 60.0f) * ctx.deltaTime;
 		}
 	};
 
@@ -27,13 +30,18 @@ namespace
 	class FloatBob : public ScriptBehavior
 	{
 	public:
-		float amplitude = 1.0f;
-		float frequency = 1.0f;
+		void DeclareParams(std::vector<ScriptParam>& out) const override
+		{
+			out.push_back({ "amplitude", 1.0f });
+			out.push_back({ "frequency", 1.0f });
+		}
 		void OnStart(ScriptContext& ctx) override { baseY = ctx.self.transform.position.y; t = 0.0f; }
 		void OnUpdate(ScriptContext& ctx) override
 		{
 			t += ctx.deltaTime;
-			ctx.self.transform.position.y = baseY + std::sin(t * frequency * 6.2831853f) * amplitude;
+			float amp = GetParam(ctx, "amplitude", 1.0f);
+			float freq = GetParam(ctx, "frequency", 1.0f);
+			ctx.self.transform.position.y = baseY + std::sin(t * freq * 6.2831853f) * amp;
 		}
 	private:
 		float baseY = 0.0f;
@@ -44,9 +52,13 @@ namespace
 	class WasdMover : public ScriptBehavior
 	{
 	public:
-		float speed = 4.0f;
+		void DeclareParams(std::vector<ScriptParam>& out) const override
+		{
+			out.push_back({ "speed", 4.0f });
+		}
 		void OnUpdate(ScriptContext& ctx) override
 		{
+			float speed = GetParam(ctx, "speed", 4.0f);
 			float h = ctx.input.GetAxis("Horizontal");
 			float v = ctx.input.GetAxis("Vertical");
 			ctx.self.transform.position.x += h * speed * ctx.deltaTime;
@@ -91,4 +103,22 @@ namespace ScriptRegistry
 
 	bool Has(const std::string& name) { return R().factories.count(name) != 0; }
 	const std::vector<std::string>& Names() { return R().names; }
+
+	std::vector<ScriptParam> ParamsOf(const std::string& name)
+	{
+		std::vector<ScriptParam> out;
+		if (auto b = Create(name)) b->DeclareParams(out);
+		return out;
+	}
+}
+
+// Reads a per-object script parameter (set in the Inspector), falling back to a default.
+float GetParam(const ScriptContext& ctx, const char* name, float def)
+{
+	if (ctx.self.script)
+	{
+		auto it = ctx.self.script->params.find(name);
+		if (it != ctx.self.script->params.end()) return it->second;
+	}
+	return def;
 }

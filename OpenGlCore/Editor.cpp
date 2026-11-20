@@ -540,9 +540,29 @@ void Editor::DrawInspector(Scene& scene, RenderSettings& settings)
 			if (ImGui::Combo("Behavior", &current, items.data(), (int)items.size()))
 			{
 				sc.behaviorName = (current == 0) ? std::string() : items[current];
+				sc.params.clear(); // params belong to the behavior; repopulate below
 				history.Push(std::make_unique<ModifyCommand>(go->id, beforeSel, *go, "Set Behavior"));
 			}
-			if (sc.behaviorName.empty()) ImGui::TextDisabled("No behavior selected.");
+			if (sc.behaviorName.empty())
+			{
+				ImGui::TextDisabled("No behavior selected.");
+			}
+			else
+			{
+				// Behavior-declared parameters, editable per object (defaults filled in once).
+				std::vector<ScriptParam> declared = ScriptRegistry::ParamsOf(sc.behaviorName);
+				if (!declared.empty())
+				{
+					ImGui::SeparatorText("Parameters");
+					for (const ScriptParam& p : declared)
+					{
+						if (sc.params.find(p.name) == sc.params.end())
+							sc.params[p.name] = p.defaultValue;
+						ImGui::DragFloat(p.name.c_str(), &sc.params[p.name], 0.05f);
+						TrackEdit(scene, go, "Change Script Param");
+					}
+				}
+			}
 
 			if (ImGui::Button("Remove Script"))
 			{
@@ -728,8 +748,15 @@ void Editor::DrawGizmo(Scene& scene, const glm::mat4& view, const glm::mat4& pro
 
 	// Manipulate the WORLD matrix, then convert back to a local transform relative to the
 	// parent so hierarchy transforms stay correct.
+	// Hold Ctrl to snap (translate 0.5u, rotate 15 deg, scale 0.1).
+	float snapVals[3] = { 0.5f, 0.5f, 0.5f };
+	if (gizmoOp == GizmoOp::Rotate) snapVals[0] = snapVals[1] = snapVals[2] = 15.0f;
+	else if (gizmoOp == GizmoOp::Scale) snapVals[0] = snapVals[1] = snapVals[2] = 0.1f;
+	const float* snap = ImGui::GetIO().KeyCtrl ? snapVals : nullptr;
+
 	glm::mat4 world = scene.WorldMatrix(go);
-	ImGuizmo::Manipulate(glm::value_ptr(view), glm::value_ptr(proj), op, mode, glm::value_ptr(world));
+	ImGuizmo::Manipulate(glm::value_ptr(view), glm::value_ptr(proj), op, mode, glm::value_ptr(world),
+		nullptr, snap);
 
 	bool using_ = ImGuizmo::IsUsing();
 	if (using_)

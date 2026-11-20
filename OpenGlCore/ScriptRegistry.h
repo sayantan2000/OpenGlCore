@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #include <functional>
+#include "ScriptBehavior.h"  // ScriptBehavior, ScriptParam
 
 class ScriptBehavior;
 
@@ -20,6 +21,9 @@ namespace ScriptRegistry
 	std::unique_ptr<ScriptBehavior> Create(const std::string& name); // nullptr if unknown
 	bool Has(const std::string& name);
 	const std::vector<std::string>& Names();             // registration order
+
+	// The parameters a behavior declares (via a throwaway instance); empty if unknown/none.
+	std::vector<ScriptParam> ParamsOf(const std::string& name);
 }
 
 #endif

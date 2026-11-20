@@ -34,7 +34,10 @@ Make what already exists persistent and composable. Highest return, low risk.
       axes (Horizontal/Vertical); polled once per frame, read by scripts. *(Gamepad TODO.)*
 - [ ] **Event/messaging system** — decoupled communication (collision events, UI events, etc.).
 - [ ] *(Defer)* **Real ECS (EnTT)** — only once component variety/entity counts justify it.
-- [ ] *(Next)* Lua scripting, script parameters exposed in the Inspector, gamepad input.
+- [x] **Script parameters in the Inspector** — behaviors declare params (`DeclareParams`),
+      per-object values live in `ScriptComponent.params` (serialized), editable as DragFloats;
+      behaviors read them via `GetParam`.
+- [ ] *(Next)* Lua scripting, gamepad input.
 
 ## Tier 3 — Physics & spatial systems
 - [ ] **Physics** (Jolt or Bullet) — rigid bodies, colliders, raycasts (reuse the editor ray math).
@@ -55,7 +58,11 @@ Make what already exists persistent and composable. Highest return, low risk.
 - [ ] **Prefabs** — reusable GameObject templates instantiated into scenes.
 - [x] **Editor camera navigation** — scroll-zoom, Alt+LMB orbit around selection, middle-mouse
       pan (Unity-style), complementing RMB flythrough.
-- [ ] **Editor UX** — gizmo snapping, multi-select, stencil mesh-outline selection.
+- [x] **Grid floor** (XZ grid + coloured X/Z axes) in the viewport.
+- [x] **Gizmo snapping** — hold Ctrl to snap (0.5u / 15° / 0.1).
+- [x] **Mesh-outline selection** — stencil silhouette around the selected object (replaces the
+      AABB box).
+- [ ] **Editor UX (remaining)** — multi-select, scene-tree multi-drag, prefabs.
 - [ ] **Audio** (miniaudio / OpenAL) — 2D then 3D positional.
 - [ ] **In-game UI / text** rendering (the FreeType HUD generalized to a UI layer).
 - [ ] **Hot-reload** for shaders, then assets.

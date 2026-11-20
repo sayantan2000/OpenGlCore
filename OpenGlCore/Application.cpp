@@ -25,6 +25,7 @@ Application::Application()
 	camera = std::make_unique<Camera>(fbWidth, fbHeight, glm::vec3(0.0f, 0.0f, 10.0f));
 	pbrShader = std::make_unique<Shader>("./Shader/pbr.vert", "./Shader/pbr.frag");
 	hdrShader = std::make_unique<Shader>("./Shader/hdr.vert", "./Shader/hdr.frag");
+	outlineShader = std::make_unique<Shader>("./Shader/outline.vert", "./Shader/outline.frag");
 	ibl = std::make_unique<IBL>("./SKYBOX/ballroom_4k.exr");
 	hud = std::make_unique<Text>("./Fonts/arial.ttf", 48, fbWidth, fbHeight);
 
@@ -252,8 +253,8 @@ void Application::CreateHdrTarget(int w, int h)
 
 	glGenRenderbuffers(1, &hdrDepth);
 	glBindRenderbuffer(GL_RENDERBUFFER, hdrDepth);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, w, h);
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, hdrDepth);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h); // +stencil for selection outline
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, hdrDepth);
 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		throw std::runtime_error("HDR framebuffer is not complete");
@@ -286,7 +287,14 @@ void Application::RenderSceneHDR()
 	glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
 	glViewport(0, 0, fbWidth, fbHeight);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+	// Stencil: write 1 only where the selected object draws (for the outline pass).
+	glEnable(GL_STENCIL_TEST);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+	glStencilFunc(GL_ALWAYS, 1, 0xFF);
+	glStencilMask(0x00);
+	std::uint32_t selId = scene->SelectedId();
 
 	pbrShader->Activate();
 	pbrShader->SetUniformValueVec3("u_camPos", camera->Position);
@@ -308,11 +316,18 @@ void Application::RenderSceneHDR()
 		mr.material.Bind(*pbrShader);
 		glm::mat4 modelMat = scene->WorldMatrix(go.get());
 		pbrShader->SetUniformMat4("model", modelMat);
+		glStencilMask(go->id == selId ? 0xFF : 0x00); // only the selection writes stencil
 		if (mr.kind == MeshRenderer::Geometry::Model && mr.model)
 			mr.model->DrawGeometry();
 		else if (mr.mesh)
 			mr.mesh->Draw();
 	}
+	glStencilMask(0x00);
+
+	RenderSelectionOutline();
+
+	glDisable(GL_STENCIL_TEST);
+	glStencilMask(0xFF); // restore so the next frame's clear works
 
 	RenderLightGizmos();
 
@@ -328,6 +343,23 @@ void Application::RenderSceneHDR()
 void Application::RenderLightGizmos()
 {
 	const glm::mat4 viewProj = camera->cameraMatrix; // proj * view (updated this frame)
+
+	// Editor grid floor on the XZ plane (grey lines + coloured X/Z axes).
+	{
+		const int half = 20;      // grid half-extent in units
+		const float e = (float)half;
+		for (int i = -half; i <= half; ++i)
+		{
+			if (i == 0) continue; // the axes are drawn coloured below
+			lines->AddLine(glm::vec3(-e, 0.0f, (float)i), glm::vec3(e, 0.0f, (float)i));
+			lines->AddLine(glm::vec3((float)i, 0.0f, -e), glm::vec3((float)i, 0.0f, e));
+		}
+		lines->Flush(viewProj, glm::vec3(0.30f, 0.30f, 0.34f));
+		lines->AddLine(glm::vec3(-e, 0.0f, 0.0f), glm::vec3(e, 0.0f, 0.0f));
+		lines->Flush(viewProj, glm::vec3(0.65f, 0.25f, 0.25f)); // X axis
+		lines->AddLine(glm::vec3(0.0f, 0.0f, -e), glm::vec3(0.0f, 0.0f, e));
+		lines->Flush(viewProj, glm::vec3(0.25f, 0.35f, 0.65f)); // Z axis
+	}
 
 	// Light wireframes (yellow).
 	for (auto& go : scene->Objects())
@@ -375,16 +407,33 @@ void Application::RenderLightGizmos()
 		}
 	}
 	lines->Flush(viewProj, glm::vec3(1.0f, 0.85f, 0.2f));
+}
 
-	// Selection highlight (orange AABB) for the selected mesh object.
-	if (GameObject* sel = scene->SelectedObject())
-	{
-		if (sel->meshRenderer)
-		{
-			lines->AddBox(sel->meshRenderer->localMin, sel->meshRenderer->localMax, scene->WorldMatrix(sel));
-			lines->Flush(viewProj, glm::vec3(1.0f, 0.5f, 0.1f), 2.0f);
-		}
-	}
+void Application::RenderSelectionOutline()
+{
+	GameObject* sel = scene->SelectedObject();
+	if (!sel || !sel->meshRenderer || !sel->meshRenderer->enabled) return;
+	MeshRenderer& mr = *sel->meshRenderer;
+
+	// Draw the selected mesh as a slightly inflated shell, only where it didn't write stencil
+	// (==1), i.e. the silhouette border. Thickness is object-space, scaled to the mesh size.
+	glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+	glStencilMask(0x00);
+	glDisable(GL_DEPTH_TEST);
+
+	outlineShader->Activate();
+	glm::mat4 mvp = camera->cameraMatrix * scene->WorldMatrix(sel);
+	float localDiag = glm::length(mr.localMax - mr.localMin);
+	glUniformMatrix4fv(glGetUniformLocation(outlineShader->ID, "u_mvp"), 1, GL_FALSE, glm::value_ptr(mvp));
+	glUniform1f(glGetUniformLocation(outlineShader->ID, "u_thickness"), 0.02f * localDiag);
+	glUniform3f(glGetUniformLocation(outlineShader->ID, "u_color"), 1.0f, 0.55f, 0.15f);
+
+	if (mr.kind == MeshRenderer::Geometry::Model && mr.model)
+		mr.model->DrawGeometry();
+	else if (mr.mesh)
+		mr.mesh->Draw();
+
+	glEnable(GL_DEPTH_TEST);
 }
 
 void Application::TonemapToScreen()

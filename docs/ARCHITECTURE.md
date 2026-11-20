@@ -100,6 +100,14 @@ main.cpp
   a single `ModifyCommand`; discrete controls (checkbox/combo/reset) and create/duplicate/
   delete push their commands directly. Commands resolve objects by stable `id`, so references
   (shared meshes/materials/textures) stay valid across undo of deletion.
+- **Viewport aids**: a `LineRenderer` grid floor (XZ + coloured X/Z axes) marks the ground;
+  the selected object gets a **stencil outline** (the HDR target uses a `DEPTH24_STENCIL8`
+  attachment — the selection writes stencil=1, then `RenderSelectionOutline` draws a
+  normal-extruded shell where stencil≠1). Gizmos **snap** while Ctrl is held
+  (ImGuizmo snap: 0.5u / 15° / 0.1). Camera nav: scroll-zoom, Alt+LMB orbit, MMB pan.
+- **Script parameters**: a behavior overrides `DeclareParams` to expose named floats; per-object
+  values live in `ScriptComponent.params` (serialized), are edited as DragFloats in the
+  Inspector, and read at runtime via `GetParam(ctx, name, default)`.
 - **Transform hierarchy**: `GameObject.parentId` links objects; `Scene::WorldMatrix` composes
   parentWorld * local (depth-guarded against cycles). Rendering, light positions, picking,
   the gizmo (manipulates the world matrix, then converts back to a local transform via

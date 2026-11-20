@@ -72,7 +72,9 @@ namespace
 			}
 			if (go->script)
 			{
-				j["script"] = { {"behavior", go->script->behaviorName}, {"enabled", go->script->enabled} };
+				json params = json::object();
+				for (const auto& [k, v] : go->script->params) params[k] = v;
+				j["script"] = { {"behavior", go->script->behaviorName}, {"enabled", go->script->enabled}, {"params", params} };
 			}
 			arr.push_back(std::move(j));
 		}
@@ -181,6 +183,9 @@ namespace
 				ScriptComponent sc;
 				sc.behaviorName = s.value("behavior", std::string());
 				sc.enabled = s.value("enabled", true);
+				if (s.contains("params") && s["params"].is_object())
+					for (auto it = s["params"].begin(); it != s["params"].end(); ++it)
+						sc.params[it.key()] = it.value().get<float>();
 				go->script = sc;
 			}
 
