@@ -41,6 +41,10 @@ main.cpp
 | `IBL.{h,cpp}` | Builds irradiance/prefilter/BRDF-LUT from `sky.frag`; skybox | Owns cubemaps/LUT/cube VAO; frees in dtor. |
 | `Model.{h,cpp}` | Assimp loader → `Mesh` list | Node transforms baked; material color + diffuse texture; `Draw` (albedo) / `DrawPBR`. |
 | `Text.{h,cpp}` | FreeType glyph renderer | 2D overlay. |
+| `Transform.h` | TRS transform (Euler degrees) | `Matrix()` = T*R*S; `Reset()`. |
+| `GameObject.h` | Scene object: name, active, `Transform`, optional components | `std::optional<MeshRenderer>` + `std::optional<LightComponent>` (no ECS). |
+| `Scene.h` | Flat GameObject list + selection | Add/Remove/Select; selection stays valid on remove. |
+| `Editor.{h,cpp}` | Dear ImGui editor (Hierarchy/Inspector/Console + dockspace) | Reusable per-component drawers; edits live scene data; gates camera input via WantCaptureMouse/Keyboard. |
 | `Texture.{h,cpp}`, `Primitive.{h,cpp}` | Legacy (stb texture, pyramid/sphere data) | Not used by the PBR scene; kept for now. |
 | `glad.c`, `stb.cpp` | Third-party single-file impls | Leave as-is. |
 
@@ -51,6 +55,9 @@ main.cpp
 - **Assimp** — model import (via vcpkg manifest `vcpkg.json`; restored to `vcpkg_installed/`).
 - **tinyexr** (vendored header, `tinyexr.cpp`) + **zlib** (vendored source, now compiled) —
   OpenEXR (`.exr`) HDR environment loading.
+- **Dear ImGui** (via vcpkg, docking + glfw/opengl3 bindings) — the editor UI. Pulls in
+  **GLFW 3.4** (vcpkg `glfw3dll.lib`/`glfw3.dll`), which is now the linked GLFW (the
+  vendored 3.3 static lib is unused) so the ImGui GLFW backend matches.
 - **opengl32.lib** — system GL. No Win32 dependency in source (GLFW handles the monitor).
 - IBL uses a **procedural sky**, so no `.hdr`/HDR-image dependency.
 

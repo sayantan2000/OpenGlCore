@@ -12,10 +12,12 @@
 #include "Light.h"
 #include "Texture.h"
 #include "PbrMaterial.h"
+#include "Scene.h"
+#include "Editor.h"
 #include "shaderClass.h"
 
-// Owns the window, render targets and scene, and runs the main loop. This is the single
-// place that wires the PBR + IBL + HDR pipeline together; main() just constructs and runs.
+// Owns the window, render targets, the Scene, the ImGui Editor, and the main loop. Wires the
+// PBR + IBL + HDR pipeline and the editor together; main() just constructs and runs.
 class Application
 {
 public:
@@ -27,9 +29,11 @@ public:
 	void Run();
 
 private:
+	void BuildScene();
 	void CreateHdrTarget(int w, int h);
-	void RenderSceneHDR();     // geometry + skybox into the HDR framebuffer
+	void RenderSceneHDR();     // iterate the Scene into the HDR framebuffer + skybox
 	void TonemapToScreen();    // HDR -> default framebuffer (ACES + gamma)
+	LightSet GatherLights();   // build a LightSet from the scene's light objects
 
 	Window window;             // first member: constructs the GL context
 
@@ -37,17 +41,16 @@ private:
 	std::unique_ptr<Shader> pbrShader;
 	std::unique_ptr<Shader> hdrShader;
 	std::unique_ptr<IBL>    ibl;
-	std::unique_ptr<Mesh>   sphere;
-	std::unique_ptr<Model>  chair;
 	std::unique_ptr<Text>   hud;
 
-	// Chair PBR texture maps (kept alive so their GL ids stay valid) + material.
+	// Shared geometry/resources referenced by scene objects (owned here).
+	std::unique_ptr<Mesh>   sphere;
+	std::unique_ptr<Model>  chair;
 	std::unique_ptr<Texture> chairAlbedo, chairNormal, chairRoughness, chairAO;
-	PbrMaterial chairMaterial;
-	float chairScale = 1.0f;
-	glm::vec3 chairCenter = glm::vec3(0.0f);
 
-	LightSet lights;
+	std::unique_ptr<Scene> scene;
+	Editor editor;
+	RenderSettings settings;
 
 	GLuint hdrFBO = 0, hdrColor = 0, hdrDepth = 0;
 	GLuint emptyVAO = 0;       // for the fullscreen tonemap triangle
@@ -55,8 +58,6 @@ private:
 
 	std::string hudText = "FPS: --";
 	float fov = 60.0f;
-	float exposure = 1.0f;        // HDR tonemap exposure (scene)
-	float skyboxIntensity = 1.0f; // skybox brightness, independent of exposure
 };
 
 #endif

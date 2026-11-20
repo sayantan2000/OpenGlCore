@@ -22,6 +22,22 @@
 - **Materials** (`PbrMaterial.{h,cpp}`): scalar + optional maps.
 - See `docs/RENDERING_PIPELINE.md` for the full flow.
 
+## Phase 6 — Editor: unified component Inspector (Dear ImGui) — ✅ DONE (2026-11-20)
+- Added a lightweight scene model: `Transform`, `GameObject` (optional `MeshRenderer` /
+  `LightComponent` components), `Scene` (list + selection). `Application` builds the scene
+  (chair + 2 spheres + 4 lights), renders by iterating it, and gathers the `LightSet` from
+  light objects each frame.
+- `Editor` (Dear ImGui, docking) draws a **Scene Hierarchy** (left), a **unified Inspector**
+  (right) with collapsible per-component sections (Transform, Mesh Renderer, Material w/
+  texture previews, Light) via reusable drawer functions, and a **Console** (bottom). The 3D
+  viewport shows through the docking passthrough central node. Inspector edits mutate live
+  scene data (material/transform/light) with immediate viewport effect; Render Settings
+  (exposure, skybox intensity, IBL/skybox toggles) are editable too.
+- Selection stays valid on delete; "nothing selected" is handled. Camera input is ignored
+  while ImGui has mouse/keyboard focus.
+- Build: links vcpkg ImGui (static) + vcpkg GLFW (dynamic). Debug|x64 builds; runtime smoke
+  test clean. Editor interaction not visually verified in this environment.
+
 ## Phase 5 — Remaining / future (Low–Medium)
 - ✅ **PBR texture-mapped mesh**: the wooden chair (`Models/wooden_chair_ukipagtbw_high/`)
   renders with BaseColor/Normal/Roughness/AO maps (metallic=0) via `Model::DrawGeometry` +

@@ -33,6 +33,27 @@
 - **Status**: Accepted and implemented. Builds Debug|x64; runtime smoke test clean (no
   shader/GL errors). Visual correctness not verified in the dev environment.
 
+## ADR-0003 — Editor + scene model (Dear ImGui) (2026-11-20)
+- **Context**: Add a Unity/Unreal-style unified Inspector that edits real scene data.
+- **Decisions**:
+  - **Lightweight scene model**, not an ECS: `GameObject` with a `Transform` and
+    `std::optional<MeshRenderer>` / `std::optional<LightComponent>`. Matches the project's
+    "avoid overengineering" principle while giving the Inspector real components to edit.
+  - **Dear ImGui via vcpkg** (docking + glfw/opengl3 bindings). The Inspector is one panel
+    with reusable per-component drawer functions (Transform/MeshRenderer/Material/Light),
+    not separate editor windows.
+  - **Docking passthrough central node**: the existing 3D render stays as the fullscreen
+    pass to the default framebuffer; ImGui panels dock around a transparent center, so no
+    render-to-texture viewport was needed (simpler, keeps the render path intact).
+  - **GLFW switched to vcpkg's 3.4** (dynamic) because the ImGui GLFW backend requires
+    `glfwGetPlatform` (3.4); the vendored 3.3 static lib is no longer linked.
+  - **Camera input gated** by `ImGuiIO::WantCaptureMouse/Keyboard` so UI interaction never
+    moves the camera. Editor UI is kept out of the render path (separate `Editor` class).
+  - Lights are first-class `GameObject`s; the renderer rebuilds the `LightSet` from them
+    each frame (single source of truth = the scene).
+- **Status**: Accepted and implemented. Debug|x64 builds; runtime smoke test clean. Editor
+  interaction not visually verified in the dev environment.
+
 ## Pre-existing decisions (reconstructed from the code — not formally recorded before)
 These describe why the project looks the way it does; confirm/revise with the maintainer.
 
