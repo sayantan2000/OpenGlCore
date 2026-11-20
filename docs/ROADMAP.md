@@ -64,6 +64,21 @@
 - **Remaining**: scene serialization (Ctrl+S), full LTC area light, gizmo snapping, mesh
   outline selection highlight, undo-history panel polish.
 
+## Phase 8 — Game-engine Tier 1: assets, serialization, hierarchy — ✅ DONE (2026-11-20)
+See `plan.md` (repo root) for the full multi-tier engine roadmap. Tier 1:
+- **AssetManager** (`AssetManager.{h,cpp}`): textures/models cached by path; materials store
+  texture paths, mesh renderers store a `sourceId` (primitive name / model path). Chair +
+  spheres rerouted through it.
+- **Scene serialization** (`SceneIO.{h,cpp}`, nlohmann/json vendored): JSON save/load of the
+  whole scene (ids, parents, transforms, materials + map paths, all light types), re-resolving
+  geometry/textures on load. Ctrl+S/Ctrl+O + File menu. Headless round-trip self-test
+  (`OGL_SCENE_SELFTEST`) **PASS**.
+- **Transform hierarchy**: `GameObject.parentId` + `Scene::WorldMatrix` (cycle-guarded);
+  Hierarchy tree with drag-reparent/unparent; picking, gizmo (world→local), focus and
+  rendering use world matrices.
+- Builds clean; normal run smoke-test clean. Editor interaction not visually verified.
+- **Next (Tier 2+)**: play/stop mode + scripting, input system, physics, shadow mapping — see `plan.md`.
+
 ## Phase 5 — Remaining / future (Low–Medium)
 - ✅ **PBR texture-mapped mesh**: the wooden chair (`Models/wooden_chair_ukipagtbw_high/`)
   renders with BaseColor/Normal/Roughness/AO maps (metallic=0) via `Model::DrawGeometry` +

@@ -43,7 +43,9 @@ main.cpp
 | `Text.{h,cpp}` | FreeType glyph renderer | 2D overlay. |
 | `Transform.h` | TRS transform (Euler degrees) | `Matrix()` = T*R*S; `Reset()`. |
 | `GameObject.h` | Scene object: name, active, `Transform`, optional components | `std::optional<MeshRenderer>` + `std::optional<LightComponent>` (no ECS). |
-| `Scene.h` | Flat GameObject list + selection by stable id | Add/InsertAt/RemoveById/FindById; stable `id` per object; selection survives create/delete/undo. |
+| `Scene.h` | GameObject list + selection + hierarchy | Add/InsertAt/RemoveById/FindById by stable `id`; `WorldMatrix`/`SetParent` (cycle-guarded) for parent/child transforms; `Clear` for load. |
+| `AssetManager.{h,cpp}` | Texture/Model cache keyed by path | Shared GPU uploads; lets materials/meshes reference assets by path (serializable). |
+| `SceneIO.{h,cpp}` | JSON scene save/load | Round-trips ids/parents/transforms/materials/lights; resolves geometry+maps via PrimitiveLibrary/AssetManager. |
 | `Editor.{h,cpp}` | Dear ImGui editor: fixed layout, picking, gizmos, shortcuts, focus, create menus, undo/redo | Hierarchy/Inspector/Console fixed panels + central viewport rect; per-component Inspector drawers with per-interaction undo; gates camera via WantCaptureMouse/Keyboard/Viewport. |
 | `EditorCommand.h` | Undo/redo command pattern + `CommandHistory` | `ModifyCommand` (before/after GameObject snapshot), `Add`/`RemoveCommand`; bounded stacks. |
 | `Picking.h` | Screen→world ray + ray/AABB (local-space) | `ScreenPointToRay`, `RayObjectAABB`; nearest hit for click selection. |
@@ -96,6 +98,17 @@ main.cpp
   a single `ModifyCommand`; discrete controls (checkbox/combo/reset) and create/duplicate/
   delete push their commands directly. Commands resolve objects by stable `id`, so references
   (shared meshes/materials/textures) stay valid across undo of deletion.
+- **Transform hierarchy**: `GameObject.parentId` links objects; `Scene::WorldMatrix` composes
+  parentWorld * local (depth-guarded against cycles). Rendering, light positions, picking,
+  the gizmo (manipulates the world matrix, then converts back to a local transform via
+  `inverse(parentWorld)`), focus and the selection AABB all use world matrices. The Hierarchy
+  is a tree with drag-and-drop reparenting (payload = object id; `Scene::SetParent` rejects
+  cycles); deleting a node promotes its children to the node's parent.
+- **Assets & serialization**: `AssetManager` caches textures/models by path so materials and
+  meshes reference assets by path (not raw handles). `SceneIO` saves/loads the scene as JSON —
+  ids, parent links, transforms, material scalars + map paths, and all light types — and
+  re-resolves geometry (`PrimitiveLibrary` by name, `AssetManager` by model path) and textures
+  on load. Ctrl+S/Ctrl+O + File menu; `OGL_SCENE_SELFTEST` runs a headless save→reload check.
 - **Area light**: the rectangle light is shaded with a representative-point approximation in
   `pbr.frag` (`shadeRect`) — closest-point diffuse + reflection-ray specular, area-scaled,
   one-sided, inverse-square. `LineRenderer` draws its outline + normal. Not full LTC; see

@@ -37,8 +37,10 @@ organized into small RAII modules; `main.cpp` is just an entry point.
   (WASD + Shift sprint, Space/Ctrl up/down, mouse look). Transform gizmos (ImGuizmo): **W**
   translate, **E** rotate, **R** scale (Gizmo menu toggles world/local). **F** or Hierarchy
   double-click focuses the selection. **Delete** deletes, **Ctrl+D** duplicates, **Ctrl+Z/
-  Ctrl+Y** undo/redo. Right-click the Hierarchy for the Create menu (Empty / Primitive /
-  Light). Camera/tool input is ignored while the cursor is over a panel or the gizmo.
+  Ctrl+Y** undo/redo, **Ctrl+S / Ctrl+O** save/load scene (File menu; default `scene.json`).
+  Right-click the Hierarchy for the Create menu (Empty / Primitive / Light); **drag** a
+  Hierarchy row onto another to **reparent** (drop on empty space to unparent). Camera/tool
+  input is ignored while the cursor is over a panel or the gizmo.
 
 ## Architecture (see docs/ARCHITECTURE.md)
 Entry: `main.cpp` → `Application` (owns window, scene, render loop). Modules:
@@ -56,7 +58,14 @@ Entry: `main.cpp` → `Application` (owns window, scene, render loop). Modules:
 - `Text` — FreeType glyph renderer.
 - `Transform`/`GameObject`/`Scene` — lightweight scene model (TRS transform + optional
   `MeshRenderer`/`LightComponent`; `std::optional` components, not an ECS). `GameObject` has a
-  stable `id`; `Scene` selects/removes/finds by id so undo/redo stays valid.
+  stable `id` and a `parentId`; `Scene` selects/removes/finds by id and computes
+  `WorldMatrix` = parentWorld * local (cycle-guarded) so transforms nest.
+- `AssetManager.{h,cpp}` — loads/caches textures & models **by path** (shared, no duplicate GPU
+  uploads); materials store texture paths, mesh renderers store a `sourceId` (primitive name or
+  model path) so the scene can be serialized and re-resolved.
+- `SceneIO.{h,cpp}` — JSON scene save/load (nlohmann/json, vendored at
+  `Libraries/source/json`). Round-trips ids, parent links, transforms, materials (+ map paths)
+  and all light types; resolves geometry via `PrimitiveLibrary`/`AssetManager` on load.
 - `Editor` — Dear ImGui editor: fixed Hierarchy/Inspector/Console panels + central viewport
   rect, viewport ray-picking, ImGuizmo transform gizmos, keyboard shortcuts, camera focus,
   Hierarchy Create context menu (Empty/Primitive/Light), and undo/redo. Camera/tool input is
@@ -102,8 +111,12 @@ Entry: `main.cpp` → `Application` (owns window, scene, render loop). Modules:
   ImGui Inspector, and the **interactive scene editor** (viewport ray-picking, ImGuizmo
   transform gizmos, W/E/R/F/Delete/Ctrl+D/Ctrl+Z/Ctrl+Y shortcuts, camera focus, fixed
   layout, Hierarchy Create menu, primitive generation, rectangle/area light, centralized
-  undo/redo). Debug|x64 builds; runtime smoke test clean (no shader/GL errors). **Editor
+  undo/redo), and **Tier 1 toward a game engine**: an `AssetManager` (textures/models by
+  path), **JSON scene serialization** (Ctrl+S/Ctrl+O), and **parent/child transform
+  hierarchy** (drag-reparent; world matrices everywhere). Debug|x64 builds; runtime smoke test
+  clean; serialization round-trip verified headlessly (`OGL_SCENE_SELFTEST`). **Editor
   interaction and visual output were NOT verified in this environment (no display).**
+- See `plan.md` for the full engine roadmap (Tier 1 done; Tiers 2–6 next).
 
 ## Known issues / remaining tasks (see docs/ROADMAP.md)
 - PBR texture maps are exercised by the wooden chair (BaseColor/Normal/Roughness/AO);

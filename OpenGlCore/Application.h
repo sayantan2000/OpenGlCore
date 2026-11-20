@@ -16,6 +16,7 @@
 #include "Editor.h"
 #include "PrimitiveLibrary.h"
 #include "LineRenderer.h"
+#include "AssetManager.h"
 #include "shaderClass.h"
 #include <vector>
 
@@ -50,10 +51,8 @@ private:
 	std::unique_ptr<IBL>    ibl;
 	std::unique_ptr<Text>   hud;
 
-	// Shared geometry/resources referenced by scene objects (owned here).
-	std::unique_ptr<Mesh>   sphere;
-	std::unique_ptr<Model>  chair;
-	std::unique_ptr<Texture> chairAlbedo, chairNormal, chairRoughness, chairAO;
+	// Shared texture/model assets loaded by path (owned here; referenced by materials/meshes).
+	std::unique_ptr<AssetManager> assets;
 
 	// Shared primitive meshes (cube/sphere/plane/...) referenced by editor-created objects.
 	std::vector<std::unique_ptr<Mesh>> primitiveMeshes;

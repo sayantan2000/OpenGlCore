@@ -21,6 +21,10 @@ struct MeshRenderer
 	Model* model = nullptr;   // when kind == Model (drawn via DrawGeometry)
 	Mesh*  mesh = nullptr;    // when kind == Mesh
 	std::string meshName = "Mesh";
+	// Serializable source descriptor, resolved on load: when kind == Model it is a model file
+	// path (AssetManager); when kind == Mesh it is a primitive name (PrimitiveLibrary), e.g.
+	// "Cube". Empty = not resolvable from assets (e.g. a one-off runtime mesh).
+	std::string sourceId;
 	PbrMaterial material;
 	std::string materialName = "Material";
 	bool enabled = true;
@@ -54,10 +58,11 @@ struct LightComponent
 struct GameObject
 {
 	std::uint32_t id = 0;
+	std::uint32_t parentId = 0;   // 0 = no parent (root); world matrix = parentWorld * local
 	std::string name = "GameObject";
 	bool active = true;
 
-	Transform transform;
+	Transform transform;          // local (relative to parent)
 	std::optional<MeshRenderer> meshRenderer;
 	std::optional<LightComponent> light;
 

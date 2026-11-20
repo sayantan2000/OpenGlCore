@@ -4,6 +4,8 @@
 #include "PbrMaterial.h"
 #include "Camera.h"
 #include "Picking.h"
+#include "AssetManager.h"
+#include "SceneIO.h"
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -35,10 +37,9 @@ namespace
 
 	const char* kLightTypes[] = { "Directional", "Point", "Spot", "Rectangle (Area)" };
 
-	// World-space AABB of a mesh object's local bounds under its transform (8 corners).
-	void WorldBounds(const GameObject& go, glm::vec3& outMin, glm::vec3& outMax)
+	// World-space AABB of a mesh object's local bounds under a world matrix (8 corners).
+	void WorldBounds(const GameObject& go, const glm::mat4& m, glm::vec3& outMin, glm::vec3& outMax)
 	{
-		glm::mat4 m = go.transform.Matrix();
 		glm::vec3 lo = go.meshRenderer ? go.meshRenderer->localMin : glm::vec3(-0.5f);
 		glm::vec3 hi = go.meshRenderer ? go.meshRenderer->localMax : glm::vec3(0.5f);
 		glm::vec3 corners[8] = {
@@ -58,10 +59,11 @@ namespace
 // ---------------------------------------------------------------------------------------
 // Lifecycle
 // ---------------------------------------------------------------------------------------
-void Editor::Init(GLFWwindow* window, Camera* cam, const PrimitiveLibrary* prims)
+void Editor::Init(GLFWwindow* window, Camera* cam, const PrimitiveLibrary* prims, AssetManager* am)
 {
 	camera = cam;
 	primitives = prims;
+	assets = am;
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -164,6 +166,16 @@ void Editor::DrawMainMenuBar(Scene& scene)
 {
 	if (!ImGui::BeginMainMenuBar()) return;
 
+	if (ImGui::BeginMenu("File"))
+	{
+		if (ImGui::MenuItem("New Scene")) NewScene(scene);
+		if (ImGui::MenuItem("Save Scene", "Ctrl+S")) SaveScene(scene);
+		if (ImGui::MenuItem("Load Scene", "Ctrl+O")) LoadScene(scene);
+		ImGui::Separator();
+		ImGui::TextDisabled("Path: %s", scenePath.c_str());
+		ImGui::EndMenu();
+	}
+
 	if (ImGui::BeginMenu("Create"))
 	{
 		if (ImGui::MenuItem("Empty GameObject")) CreateEmpty(scene);
@@ -198,6 +210,9 @@ void Editor::DrawMainMenuBar(Scene& scene)
 		ImGui::Separator();
 		if (ImGui::MenuItem("Duplicate", "Ctrl+D", false, scene.SelectedObject() != nullptr)) DuplicateSelected(scene);
 		if (ImGui::MenuItem("Delete", "Del", false, scene.SelectedObject() != nullptr)) DeleteSelected(scene);
+		bool hasParent = scene.SelectedObject() && scene.SelectedObject()->parentId != 0;
+		if (ImGui::MenuItem("Unparent", nullptr, false, hasParent))
+			Reparent(scene, scene.SelectedId(), 0);
 		ImGui::EndMenu();
 	}
 
@@ -226,32 +241,90 @@ void Editor::DrawMainMenuBar(Scene& scene)
 // ---------------------------------------------------------------------------------------
 // Hierarchy
 // ---------------------------------------------------------------------------------------
+void Editor::Reparent(Scene& scene, std::uint32_t childId, std::uint32_t parentId)
+{
+	GameObject* c = scene.FindById(childId);
+	if (!c) return;
+	GameObject before = *c;
+	if (scene.SetParent(childId, parentId))
+	{
+		history.Push(std::make_unique<ModifyCommand>(childId, before, *c, parentId ? "Reparent" : "Unparent"));
+		Log(parentId ? "Reparented: " + c->name : "Unparented: " + c->name);
+	}
+}
+
+void Editor::DrawHierarchyNode(Scene& scene, GameObject* go)
+{
+	// Does this node have children?
+	bool hasChildren = false;
+	for (auto& o : scene.Objects())
+		if (o->parentId == go->id) { hasChildren = true; break; }
+
+	ImGui::PushID((int)go->id);
+
+	bool active = go->active;
+	if (ImGui::Checkbox("##active", &active))
+	{
+		GameObject before = *go; go->active = active;
+		history.Push(std::make_unique<ModifyCommand>(go->id, before, *go, "Toggle Active"));
+	}
+	ImGui::SameLine();
+
+	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth |
+		ImGuiTreeNodeFlags_DefaultOpen;
+	if (scene.SelectedId() == go->id) flags |= ImGuiTreeNodeFlags_Selected;
+	if (!hasChildren) flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+
+	bool open = ImGui::TreeNodeEx(go->name.c_str(), flags);
+	if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
+		scene.SelectById(go->id);
+	if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+	{
+		scene.SelectById(go->id);
+		FocusSelected(scene);
+	}
+
+	// Drag-drop reparenting: drag this node onto another to parent it there.
+	if (ImGui::BeginDragDropSource())
+	{
+		std::uint32_t id = go->id;
+		ImGui::SetDragDropPayload("GAMEOBJECT_ID", &id, sizeof(id));
+		ImGui::Text("Move %s", go->name.c_str());
+		ImGui::EndDragDropSource();
+	}
+	if (ImGui::BeginDragDropTarget())
+	{
+		if (const ImGuiPayload* p = ImGui::AcceptDragDropPayload("GAMEOBJECT_ID"))
+			Reparent(scene, *(const std::uint32_t*)p->Data, go->id);
+		ImGui::EndDragDropTarget();
+	}
+
+	if (open && hasChildren)
+	{
+		for (auto& o : scene.Objects())
+			if (o->parentId == go->id) DrawHierarchyNode(scene, o.get());
+		ImGui::TreePop();
+	}
+
+	ImGui::PopID();
+}
+
 void Editor::DrawHierarchy(Scene& scene)
 {
-	ImGui::TextDisabled("Right-click for Create menu");
+	ImGui::TextDisabled("Right-click: Create | Drag: reparent");
 	ImGui::Separator();
 
-	for (int i = 0; i < (int)scene.Count(); ++i)
+	// Draw roots (parentId == 0); children are drawn recursively.
+	for (auto& o : scene.Objects())
+		if (o->parentId == 0) DrawHierarchyNode(scene, o.get());
+
+	// A drop target over the remaining empty space detaches an object to the root.
+	ImGui::Dummy(ImVec2(0, 24));
+	if (ImGui::BeginDragDropTarget())
 	{
-		GameObject* go = scene.At(i);
-		ImGui::PushID((int)go->id);
-		bool active = go->active;
-		if (ImGui::Checkbox("##active", &active))
-		{
-			GameObject before = *go; go->active = active;
-			history.Push(std::make_unique<ModifyCommand>(go->id, before, *go, "Toggle Active"));
-		}
-		ImGui::SameLine();
-		bool selected = (scene.Selected() == i);
-		if (ImGui::Selectable(go->name.c_str(), selected))
-			scene.Select(i);
-		// Double-click in the hierarchy focuses the object.
-		if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-		{
-			scene.Select(i);
-			FocusSelected(scene);
-		}
-		ImGui::PopID();
+		if (const ImGuiPayload* p = ImGui::AcceptDragDropPayload("GAMEOBJECT_ID"))
+			Reparent(scene, *(const std::uint32_t*)p->Data, 0);
+		ImGui::EndDragDropTarget();
 	}
 
 	// Right-click anywhere in the window (empty space included) -> create menu.
@@ -501,7 +574,7 @@ void Editor::HandlePicking(Scene& scene, const glm::mat4& view, const glm::mat4&
 			{
 				GameObject* go = up.get();
 				if (!go->active || !go->meshRenderer) continue;
-				glm::mat4 model = go->transform.Matrix();
+				glm::mat4 model = scene.WorldMatrix(go);
 				float dist;
 				if (Picking::RayObjectAABB(ray, model, go->meshRenderer->localMin, go->meshRenderer->localMax, dist))
 				{
@@ -535,14 +608,21 @@ void Editor::DrawGizmo(Scene& scene, const glm::mat4& view, const glm::mat4& pro
 		gizmoOp == GizmoOp::Rotate ? ImGuizmo::ROTATE : ImGuizmo::SCALE;
 	ImGuizmo::MODE mode = (gizmoSpace == GizmoSpace::World) ? ImGuizmo::WORLD : ImGuizmo::LOCAL;
 
-	glm::mat4 model = go->transform.Matrix();
-	ImGuizmo::Manipulate(glm::value_ptr(view), glm::value_ptr(proj), op, mode, glm::value_ptr(model));
+	// Manipulate the WORLD matrix, then convert back to a local transform relative to the
+	// parent so hierarchy transforms stay correct.
+	glm::mat4 world = scene.WorldMatrix(go);
+	ImGuizmo::Manipulate(glm::value_ptr(view), glm::value_ptr(proj), op, mode, glm::value_ptr(world));
 
 	bool using_ = ImGuizmo::IsUsing();
 	if (using_)
 	{
+		glm::mat4 parentWorld(1.0f);
+		if (go->parentId != 0)
+			if (GameObject* p = scene.FindById(go->parentId)) parentWorld = scene.WorldMatrix(p);
+		glm::mat4 local = glm::inverse(parentWorld) * world;
+
 		float t[3], r[3], s[3];
-		ImGuizmo::DecomposeMatrixToComponents(glm::value_ptr(model), t, r, s);
+		ImGuizmo::DecomposeMatrixToComponents(glm::value_ptr(local), t, r, s);
 		go->transform.position = glm::vec3(t[0], t[1], t[2]);
 		go->transform.rotationEuler = glm::vec3(r[0], r[1], r[2]);
 		go->transform.scale = glm::vec3(s[0], s[1], s[2]);
@@ -573,7 +653,8 @@ void Editor::HandleShortcuts(Scene& scene)
 		if (ImGui::IsKeyPressed(ImGuiKey_Z, false)) { std::string n = history.Undo(scene); if (!n.empty()) Log("Undo: " + n); }
 		if (ImGui::IsKeyPressed(ImGuiKey_Y, false)) { std::string n = history.Redo(scene); if (!n.empty()) Log("Redo: " + n); }
 		if (ImGui::IsKeyPressed(ImGuiKey_D, false)) DuplicateSelected(scene);
-		if (ImGui::IsKeyPressed(ImGuiKey_S, false)) Log("Ctrl+S: scene serialization is not implemented yet.");
+		if (ImGui::IsKeyPressed(ImGuiKey_S, false)) SaveScene(scene);
+		if (ImGui::IsKeyPressed(ImGuiKey_O, false)) LoadScene(scene);
 		return; // Ctrl combos handled; don't also fire plain-key tools
 	}
 
@@ -594,15 +675,16 @@ void Editor::FocusSelected(Scene& scene)
 
 	glm::vec3 center;
 	float radius;
+	glm::mat4 world = scene.WorldMatrix(go);
 	if (go->meshRenderer)
 	{
-		glm::vec3 mn, mx; WorldBounds(*go, mn, mx);
+		glm::vec3 mn, mx; WorldBounds(*go, world, mn, mx);
 		center = (mn + mx) * 0.5f;
 		radius = glm::length(mx - mn) * 0.5f;
 	}
 	else
 	{
-		center = go->transform.position;
+		center = glm::vec3(world[3]);
 		radius = 1.0f;
 	}
 	radius = glm::max(radius, 0.1f);
@@ -655,6 +737,7 @@ void Editor::CreatePrimitive(Scene& scene, PrimitiveType type)
 	MeshRenderer mr;
 	mr.kind = MeshRenderer::Geometry::Mesh;
 	mr.mesh = def.mesh;
+	mr.sourceId = def.name; // primitive name, for serialization
 	mr.meshName = def.name;
 	mr.materialName = "Default";
 	mr.material.albedo = glm::vec3(0.8f);
@@ -711,6 +794,38 @@ void Editor::DeleteSelected(Scene& scene)
 	scene.RemoveById(go->id);
 	history.Push(std::make_unique<RemoveCommand>(copy, (size_t)idx, "Delete " + name));
 	Log("Deleted: " + name);
+}
+
+// ---------------------------------------------------------------------------------------
+// Scene file I/O
+// ---------------------------------------------------------------------------------------
+void Editor::NewScene(Scene& scene)
+{
+	scene.Clear();
+	history.Clear();
+	Log("New (empty) scene.");
+}
+
+void Editor::SaveScene(Scene& scene)
+{
+	std::string err;
+	if (SceneIO::Save(scene, scenePath, &err))
+		Log("Saved scene -> " + scenePath + " (" + std::to_string(scene.Count()) + " objects)");
+	else
+		Log("Save failed: " + err);
+}
+
+void Editor::LoadScene(Scene& scene)
+{
+	if (!assets || !primitives) { Log("Load failed: asset systems unavailable."); return; }
+	std::string err;
+	if (SceneIO::Load(scene, scenePath, *assets, *primitives, &err))
+	{
+		history.Clear(); // ids/objects changed; previous commands no longer apply
+		Log("Loaded scene <- " + scenePath + " (" + std::to_string(scene.Count()) + " objects)");
+	}
+	else
+		Log("Load failed: " + err);
 }
 
 // ---------------------------------------------------------------------------------------

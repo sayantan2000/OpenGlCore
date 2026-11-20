@@ -97,6 +97,33 @@
   no gizmo snapping UI; selection highlight is an AABB, not a mesh outline; no scene
   serialization yet (Ctrl+S logs a notice).
 
+## ADR-0005 — Tier 1 engine foundations: assets, serialization, hierarchy (2026-11-20)
+- **Context**: First step from "renderer + editor" toward a game engine — make scenes
+  persistent and composable (see `plan.md`).
+- **Decisions**:
+  - **AssetManager** caches textures/models **by path** (shared GPU uploads, negative-cache on
+    failure). Materials now carry texture *paths* beside their GL handles, and mesh renderers
+    carry a `sourceId` (primitive name or model path). This is the prerequisite that lets the
+    scene be serialized by reference instead of by opaque handle. The default chair + spheres
+    were rerouted through it so the whole scene is serializable.
+  - **JSON serialization** via **nlohmann/json** (single header, vendored at
+    `Libraries/source/json`) rather than a hand-rolled format — ubiquitous, header-only, no
+    build cost. `SceneIO` round-trips ids, parent links, transforms, material scalars + map
+    paths, and every light type; geometry/textures are re-resolved on load. A guarded
+    `OGL_SCENE_SELFTEST` path saves→reloads the built scene headlessly (verified: 8→8 objects,
+    chair geometry + maps re-resolved), since there's no display to drive Ctrl+S.
+  - **Parent/child hierarchy** by `parentId` + `Scene::WorldMatrix` (not a stored world matrix
+    or a pointer tree) — simplest, keeps the flat object list and stable-id model intact, and
+    composes on demand with a depth guard against cycles. The gizmo manipulates the world
+    matrix and converts back to a parent-relative local transform so nested objects stay
+    correct. Delete promotes children to the deleted node's parent.
+- **Status**: Accepted and implemented. Debug|x64 builds clean; normal run smoke-test clean;
+  serialization round-trip self-test **PASS**. Editor interaction/visuals not verified (no display).
+- **Known limitations**: reparenting keeps the local transform (so the object may visually
+  jump — no world-preserving reparent yet); undo of a delete doesn't restore former child
+  links (children were promoted); no file dialog (fixed `scene.json` path); textures are not
+  yet sRGB-flagged at upload (shader still does the decode).
+
 ## Pre-existing decisions (reconstructed from the code — not formally recorded before)
 These describe why the project looks the way it does; confirm/revise with the maintainer.
 

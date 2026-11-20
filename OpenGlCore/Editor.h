@@ -11,6 +11,7 @@
 struct GLFWwindow;
 class Scene;
 class Camera;
+class AssetManager;
 
 // Per-frame render settings the Inspector/menus can tweak.
 struct RenderSettings
@@ -33,7 +34,8 @@ public:
 	enum class GizmoOp { Translate, Rotate, Scale };
 	enum class GizmoSpace { World, Local };
 
-	void Init(GLFWwindow* window, Camera* camera, const PrimitiveLibrary* primitives);
+	void Init(GLFWwindow* window, Camera* camera, const PrimitiveLibrary* primitives,
+		AssetManager* assets);
 	void Shutdown();
 
 	void BeginFrame();                       // ImGui + ImGuizmo new frame
@@ -54,6 +56,8 @@ private:
 	// Panels
 	void DrawMainMenuBar(Scene& scene);
 	void DrawHierarchy(Scene& scene);
+	void DrawHierarchyNode(Scene& scene, GameObject* go);
+	void Reparent(Scene& scene, std::uint32_t childId, std::uint32_t parentId);
 	void DrawInspector(Scene& scene, RenderSettings& settings);
 	void DrawConsole(const RenderSettings& settings);
 	void DrawHistoryPanel();
@@ -72,6 +76,11 @@ private:
 	void DeleteSelected(Scene& scene);
 	GameObject* Commit(Scene& scene, std::unique_ptr<GameObject> go, const char* label);
 
+	// Scene file I/O (JSON). Clears undo history on new/load (ids change).
+	void NewScene(Scene& scene);
+	void SaveScene(Scene& scene);
+	void LoadScene(Scene& scene);
+
 	// Inspector change tracking -> one undo command per interaction.
 	void TrackEdit(Scene& scene, GameObject* go, const char* label);
 
@@ -80,7 +89,9 @@ private:
 	std::vector<std::string> console;
 	Camera* camera = nullptr;
 	const PrimitiveLibrary* primitives = nullptr;
+	AssetManager* assets = nullptr;
 	CommandHistory history;
+	std::string scenePath = "scene.json"; // default save/load path (cwd)
 
 	GizmoOp gizmoOp = GizmoOp::Translate;
 	GizmoSpace gizmoSpace = GizmoSpace::World;

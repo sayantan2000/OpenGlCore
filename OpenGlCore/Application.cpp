@@ -2,6 +2,9 @@
 #include "Geometry.h"
 #include "GLUtils.h"
 #include "Time.h"
+#include "SceneIO.h"
+#include <cstdlib>
+#include <iostream>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <stdexcept>
@@ -24,28 +27,10 @@ Application::Application()
 	ibl = std::make_unique<IBL>("./SKYBOX/ballroom_4k.exr");
 	hud = std::make_unique<Text>("./Fonts/arial.ttf", 48, fbWidth, fbHeight);
 
-	// Shared sphere mesh.
-	{
-		std::vector<GLfloat> verts; std::vector<GLuint> idx;
-		Geometry::BuildSphere(verts, idx, 64, 1.0f);
-		sphere = std::make_unique<Mesh>(verts, idx,
-			std::vector<VertexAttribute>{ {3, GL_FLOAT}, {3, GL_FLOAT}, {2, GL_FLOAT}, {3, GL_FLOAT} });
-	}
-
-	// Chair model + its PBR texture set.
-	{
-		const std::string dir = "./Models/wooden_chair_ukipagtbw_high/";
-		const std::string base = dir + "Wooden_Chair_ukipagtbw_High_4K_";
-		chair = std::make_unique<Model>((dir + "Wooden_Chair_ukipagtbw_High.fbx").c_str());
-		chairAlbedo    = std::make_unique<Texture>((base + "BaseColor.jpg").c_str(), GL_TEXTURE_2D, GL_TEXTURE0, GL_RGB, GL_UNSIGNED_BYTE);
-		chairNormal    = std::make_unique<Texture>((base + "Normal.jpg").c_str(),    GL_TEXTURE_2D, GL_TEXTURE0, GL_RGB, GL_UNSIGNED_BYTE);
-		chairRoughness = std::make_unique<Texture>((base + "Roughness.jpg").c_str(), GL_TEXTURE_2D, GL_TEXTURE0, GL_RGB, GL_UNSIGNED_BYTE);
-		chairAO        = std::make_unique<Texture>((base + "AO.jpg").c_str(),        GL_TEXTURE_2D, GL_TEXTURE0, GL_RGB, GL_UNSIGNED_BYTE);
-	}
-
 	CreateHdrTarget(fbWidth, fbHeight);
 	glGenVertexArrays(1, &emptyVAO);
 
+	assets = std::make_unique<AssetManager>();
 	lines = std::make_unique<LineRenderer>();
 	BuildPrimitiveLibrary();
 
@@ -57,7 +42,7 @@ Application::Application()
 	scene = std::make_unique<Scene>();
 	BuildScene();
 
-	editor.Init(window.Handle(), camera.get(), &primitives);
+	editor.Init(window.Handle(), camera.get(), &primitives, assets.get());
 	editor.Log(std::string("IBL source: ") + (ibl->UsingHDRI() ? "HDRI (ballroom_4k.exr)" : "procedural sky"));
 	editor.Log("Scene loaded: " + std::to_string(scene->Count()) + " objects.");
 
@@ -66,34 +51,47 @@ Application::Application()
 
 void Application::BuildScene()
 {
-	// --- Wooden chair (Model + full PBR map set) ---
+	// --- Wooden chair (Model + full PBR map set, all loaded via the AssetManager) ---
 	{
-		float fit = chair->ScaleToFit(6.0f);
-		glm::vec3 center = chair->Center();
+		const std::string dir = "./Models/wooden_chair_ukipagtbw_high/";
+		const std::string base = dir + "Wooden_Chair_ukipagtbw_High_4K_";
+		const std::string modelPath = dir + "Wooden_Chair_ukipagtbw_High.fbx";
+		Model* chair = assets->GetModel(modelPath);
+
 		auto go = std::make_unique<GameObject>();
 		go->name = "Wooden Chair";
-		go->transform.scale = glm::vec3(fit);
-		go->transform.position = -fit * center; // reproduce the centered fit as a TRS
 		MeshRenderer mr;
 		mr.kind = MeshRenderer::Geometry::Model;
-		mr.model = chair.get();
+		mr.model = chair;
+		mr.sourceId = modelPath;
 		mr.meshName = "Wooden_Chair_ukipagtbw_High.fbx";
 		mr.materialName = "Wood (PBR maps)";
 		mr.material.albedo = glm::vec3(1.0f);
 		mr.material.metallic = 0.0f;
 		mr.material.roughness = 1.0f;
 		mr.material.ao = 1.0f;
-		mr.material.albedoMap = chairAlbedo->ID;
-		mr.material.normalMap = chairNormal->ID;
-		mr.material.roughnessMap = chairRoughness->ID;
-		mr.material.aoMap = chairAO->ID;
-		mr.localMin = chair->BoundsMin(); // model-space AABB for picking / focus
-		mr.localMax = chair->BoundsMax();
+		mr.material.albedoMapPath = base + "BaseColor.jpg";
+		mr.material.normalMapPath = base + "Normal.jpg";
+		mr.material.roughnessMapPath = base + "Roughness.jpg";
+		mr.material.aoMapPath = base + "AO.jpg";
+		mr.material.albedoMap = assets->GetTexture(mr.material.albedoMapPath, true);
+		mr.material.normalMap = assets->GetTexture(mr.material.normalMapPath);
+		mr.material.roughnessMap = assets->GetTexture(mr.material.roughnessMapPath);
+		mr.material.aoMap = assets->GetTexture(mr.material.aoMapPath);
+		if (chair)
+		{
+			float fit = chair->ScaleToFit(6.0f);
+			go->transform.scale = glm::vec3(fit);
+			go->transform.position = -fit * chair->Center(); // reproduce the centered fit as a TRS
+			mr.localMin = chair->BoundsMin();
+			mr.localMax = chair->BoundsMax();
+		}
 		go->meshRenderer = mr;
 		scene->Add(std::move(go));
 	}
 
-	// --- Two spheres with scalar materials (metal + dielectric) ---
+	// --- Two spheres with scalar materials (metal + dielectric), using the primitive mesh ---
+	const PrimitiveDef& sphereDef = primitives.Get(PrimitiveType::Sphere);
 	auto makeSphere = [&](const char* name, glm::vec3 pos, glm::vec3 color, float metal, float rough)
 	{
 		auto go = std::make_unique<GameObject>();
@@ -102,13 +100,16 @@ void Application::BuildScene()
 		go->transform.scale = glm::vec3(1.5f);
 		MeshRenderer mr;
 		mr.kind = MeshRenderer::Geometry::Mesh;
-		mr.mesh = sphere.get();
-		mr.meshName = "UV Sphere";
+		mr.mesh = sphereDef.mesh;
+		mr.sourceId = sphereDef.name; // "Sphere"
+		mr.meshName = "Sphere";
 		mr.materialName = name;
 		mr.material.albedo = color;
 		mr.material.metallic = metal;
 		mr.material.roughness = rough;
 		mr.material.ao = 1.0f;
+		mr.localMin = sphereDef.localMin;
+		mr.localMax = sphereDef.localMax;
 		go->meshRenderer = mr;
 		scene->Add(std::move(go));
 	};
@@ -184,6 +185,7 @@ LightSet Application::GatherLights()
 	{
 		if (!go->active || !go->light || !go->light->enabled) continue;
 		const LightComponent& l = *go->light;
+		glm::vec3 worldPos = scene->WorldPosition(go.get());
 		switch (l.type)
 		{
 		case LightComponent::Type::Directional:
@@ -193,12 +195,12 @@ LightSet Application::GatherLights()
 			ls.directional.intensity = l.intensity;
 			break;
 		case LightComponent::Type::Point:
-			ls.points.push_back({ go->transform.position, l.color, l.intensity });
+			ls.points.push_back({ worldPos, l.color, l.intensity });
 			break;
 		case LightComponent::Type::Spot:
 		{
 			SpotLight s;
-			s.position = go->transform.position;
+			s.position = worldPos;
 			s.direction = l.direction;
 			s.color = l.color;
 			s.intensity = l.intensity;
@@ -210,7 +212,7 @@ LightSet Application::GatherLights()
 		case LightComponent::Type::Rect:
 		{
 			RectLight r;
-			r.position = go->transform.position;
+			r.position = worldPos;
 			r.normal = glm::normalize(l.direction);
 			// Build an orthonormal basis for the emitter plane.
 			glm::vec3 refUp = (std::abs(r.normal.y) > 0.95f) ? glm::vec3(1, 0, 0) : glm::vec3(0, 1, 0);
@@ -298,7 +300,7 @@ void Application::RenderSceneHDR()
 		if (!go->active || !go->meshRenderer || !go->meshRenderer->enabled) continue;
 		MeshRenderer& mr = *go->meshRenderer;
 		mr.material.Bind(*pbrShader);
-		glm::mat4 modelMat = go->transform.Matrix();
+		glm::mat4 modelMat = scene->WorldMatrix(go.get());
 		pbrShader->SetUniformMat4("model", modelMat);
 		if (mr.kind == MeshRenderer::Geometry::Model && mr.model)
 			mr.model->DrawGeometry();
@@ -326,7 +328,7 @@ void Application::RenderLightGizmos()
 	{
 		if (!go->active || !go->light) continue;
 		const LightComponent& l = *go->light;
-		glm::vec3 p = go->transform.position;
+		glm::vec3 p = scene->WorldPosition(go.get());
 		switch (l.type)
 		{
 		case LightComponent::Type::Point:
@@ -373,7 +375,7 @@ void Application::RenderLightGizmos()
 	{
 		if (sel->meshRenderer)
 		{
-			lines->AddBox(sel->meshRenderer->localMin, sel->meshRenderer->localMax, sel->transform.Matrix());
+			lines->AddBox(sel->meshRenderer->localMin, sel->meshRenderer->localMax, scene->WorldMatrix(sel));
 			lines->Flush(viewProj, glm::vec3(1.0f, 0.5f, 0.1f), 2.0f);
 		}
 	}
@@ -401,6 +403,37 @@ void Application::TonemapToScreen()
 
 void Application::Run()
 {
+	// Headless self-test for scene serialization (no display needed): set OGL_SCENE_SELFTEST
+	// to save the built scene, reload it through the AssetManager/PrimitiveLibrary, and report.
+	bool selfTest = false;
+	{
+		size_t len = 0; char buf[8];
+		if (getenv_s(&len, buf, sizeof(buf), "OGL_SCENE_SELFTEST") == 0 && len > 0) selfTest = true;
+	}
+	if (selfTest)
+	{
+		std::string err;
+		size_t before = scene->Count();
+		bool saved = SceneIO::Save(*scene, "scene_selftest.json", &err);
+		std::cout << "[SELFTEST] save=" << (saved ? "ok" : ("FAIL:" + err))
+			<< " objects=" << before << std::endl;
+		Scene reloaded;
+		bool loaded = SceneIO::Load(reloaded, "scene_selftest.json", *assets, primitives, &err);
+		std::cout << "[SELFTEST] load=" << (loaded ? "ok" : ("FAIL:" + err))
+			<< " objects=" << reloaded.Count() << std::endl;
+		// Spot-check the first object's resolved geometry + a material map.
+		if (loaded && reloaded.Count() > 0)
+		{
+			GameObject* g = reloaded.At(0);
+			bool geo = g->meshRenderer && (g->meshRenderer->model || g->meshRenderer->mesh);
+			std::cout << "[SELFTEST] first='" << g->name << "' geometryResolved=" << geo
+				<< " albedoMap=" << (g->meshRenderer ? g->meshRenderer->material.albedoMap : 0) << std::endl;
+		}
+		std::cout << "[SELFTEST] "
+			<< ((saved && loaded && reloaded.Count() == before) ? "PASS" : "FAIL") << std::endl;
+		return;
+	}
+
 	double lastFrame = glfwGetTime();
 	double prevFpsTime = lastFrame;
 	int frameCount = 0;

@@ -156,6 +156,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Application.cpp" />
+    <ClCompile Include="AssetManager.cpp" />
+    <ClCompile Include="SceneIO.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="Editor.cpp" />
     <ClCompile Include="Geometry.cpp" />
@@ -208,6 +210,8 @@
     <ClInclude Include="Scene.h" />
     <ClInclude Include="Transform.h" />
     <ClInclude Include="EditorCommand.h" />
+    <ClInclude Include="AssetManager.h" />
+    <ClInclude Include="SceneIO.h" />
     <ClInclude Include="Picking.h" />
     <ClInclude Include="PrimitiveLibrary.h" />
     <ClInclude Include="LineRenderer.h" />

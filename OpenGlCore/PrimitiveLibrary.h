@@ -2,6 +2,7 @@
 #define PRIMITIVE_LIBRARY_H
 
 #include <array>
+#include <string>
 #include <glm/glm.hpp>
 
 class Mesh;
@@ -27,6 +28,14 @@ struct PrimitiveLibrary
 
 	const PrimitiveDef& Get(PrimitiveType t) const { return defs[(size_t)t]; }
 	PrimitiveDef& Get(PrimitiveType t) { return defs[(size_t)t]; }
+
+	// Looks up a primitive by its display name (e.g. "Cube"); nullptr if not found.
+	const PrimitiveDef* FindByName(const std::string& name) const
+	{
+		for (const PrimitiveDef& d : defs)
+			if (d.mesh && d.name && name == d.name) return &d;
+		return nullptr;
+	}
 };
 
 #endif
