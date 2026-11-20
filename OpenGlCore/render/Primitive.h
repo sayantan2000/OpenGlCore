@@ -6,6 +6,8 @@
 #include<glm/glm.hpp>
 #include"Enums.h";
 
+namespace ogl {
+
 
 #define M_E         2.71828182845904523536028747135266250   /* e */
 #define M_LOG2E     1.44269504088896340735992468100189214   /* log 2e */
@@ -83,3 +85,5 @@ public:
 };
 
 
+
+} // namespace ogl

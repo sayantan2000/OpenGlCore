@@ -11,6 +11,8 @@
 
 #include"shaderClass.h"
 
+namespace ogl {
+
 class Camera
 {
 public:
@@ -44,4 +46,6 @@ public:
 	// Handles camera inputs
 	void Inputs(GLFWwindow* window, float tick);
 };
+
+} // namespace ogl
 #endif

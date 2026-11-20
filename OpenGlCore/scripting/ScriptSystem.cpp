@@ -5,6 +5,8 @@
 #include "GameObject.h"
 #include "Physics.h"
 
+namespace ogl {
+
 ScriptSystem::ScriptSystem() = default;
 ScriptSystem::~ScriptSystem() = default; // ScriptBehavior complete here -> unique_ptr can delete
 
@@ -61,3 +63,5 @@ void ScriptSystem::End()
 	instances.clear();
 	running = false;
 }
+
+} // namespace ogl

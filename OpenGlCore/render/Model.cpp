@@ -10,6 +10,8 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
+namespace ogl {
+
 // Uploads 8-bit image data as a GL texture with mipmaps; returns the texture id.
 static GLuint MakeGLTexture(const unsigned char* data, int w, int h, int channels)
 {
@@ -295,3 +297,5 @@ void Model::Draw(Shader& shader)
 	}
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
+
+} // namespace ogl

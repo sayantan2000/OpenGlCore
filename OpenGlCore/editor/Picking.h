@@ -5,6 +5,8 @@
 #include <glm/gtc/matrix_inverse.hpp>
 #include <limits>
 
+namespace ogl {
+
 // Mouse-ray object picking against per-object AABBs. The scene renders fullscreen, so
 // screen coordinates map directly to the framebuffer. Rays are transformed into each
 // object's local space and tested against its local AABB (handling rotation/scale), then
@@ -82,4 +84,6 @@ namespace Picking
 	}
 }
 
+
+} // namespace ogl
 #endif

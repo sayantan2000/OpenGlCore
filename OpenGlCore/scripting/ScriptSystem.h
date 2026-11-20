@@ -5,6 +5,8 @@
 #include <memory>
 #include <unordered_map>
 
+namespace ogl {
+
 class Scene;
 class Input;
 class ScriptBehavior;
@@ -33,4 +35,6 @@ private:
 	bool running = false;
 };
 
+
+} // namespace ogl
 #endif

@@ -5,6 +5,8 @@
 #include <glm/glm.hpp>
 #include "shaderClass.h"
 
+namespace ogl {
+
 // Light definitions for the PBR renderer. Colors are linear radiance; `intensity`
 // scales the color. Point/spot lights use physically-based inverse-square falloff
 // in the shader (no manual constant/linear/quadratic terms).
@@ -65,4 +67,6 @@ struct LightSet
 	void Upload(Shader& shader) const;
 };
 
+
+} // namespace ogl
 #endif

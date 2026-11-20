@@ -5,6 +5,8 @@
 #include <glm/glm.hpp>
 #include <string>
 
+namespace ogl {
+
 // Image-Based Lighting: builds the diffuse irradiance cubemap, the pre-filtered specular
 // environment cubemap, and the BRDF integration LUT from an HDR environment. The source is
 // an equirectangular .hdr image when `hdriPath` loads successfully; otherwise it falls back
@@ -42,4 +44,6 @@ private:
 	void RenderCube();
 };
 
+
+} // namespace ogl
 #endif

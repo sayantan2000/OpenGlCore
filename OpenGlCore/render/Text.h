@@ -7,6 +7,8 @@
 #include<glad/glad.h>
 #include"shaderClass.h"
 
+namespace ogl {
+
 // Renders 2D screen-space text using FreeType-rasterized glyph textures and
 // textured quads. One Text owns a font atlas (one texture per ASCII glyph), a
 // dynamic quad VAO/VBO, and the text shader. Non-copyable (owns GL resources).
@@ -39,4 +41,6 @@ private:
 	GLuint vbo = 0;
 	glm::mat4 projection = glm::mat4(1.0f);
 };
+
+} // namespace ogl
 #endif

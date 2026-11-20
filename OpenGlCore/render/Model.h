@@ -13,6 +13,8 @@ struct aiScene;
 struct aiMesh;
 struct aiTexture;
 
+namespace ogl {
+
 // Loads a 3D model via Assimp (FBX, OBJ, glTF, ...) and stores it as a set of Meshes
 // in this project's standard 11-float vertex layout (pos3, color3, uv2, normal3), so a
 // loaded model can be drawn with the existing default.vert/default.frag shaders.
@@ -67,4 +69,6 @@ private:
 	GLuint LoadTextureFromFile(const std::string& path);
 	GLuint LoadEmbeddedTexture(const aiTexture* tex);
 };
+
+} // namespace ogl
 #endif

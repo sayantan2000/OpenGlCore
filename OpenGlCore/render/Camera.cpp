@@ -1,5 +1,7 @@
 #include"Camera.h"
 
+namespace ogl {
+
 
 
 Camera::Camera(int width, int height, glm::vec3 position)
@@ -93,3 +95,4 @@ void Camera::Inputs(GLFWwindow* window, float tick)
 
 	glfwSetCursorPos(window, (width / 2), (height / 2));
 }
+} // namespace ogl

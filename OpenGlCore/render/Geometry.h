@@ -4,6 +4,8 @@
 #include <vector>
 #include <glad/glad.h>
 
+namespace ogl {
+
 // Procedural geometry helpers. All primitives use the project's standard 11-float vertex
 // layout (pos3, color3, uv2, normal3) so they render with the PBR / default shaders. Each
 // builder fills `vertices`/`indices` (both cleared first). Primitives are centred on the
@@ -38,4 +40,6 @@ namespace Geometry
 		int segments = 24, float radius = 0.5f, float cylinderHeight = 1.0f);
 }
 
+
+} // namespace ogl
 #endif

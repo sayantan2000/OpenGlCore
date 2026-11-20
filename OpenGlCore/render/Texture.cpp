@@ -3,6 +3,8 @@
 #include<stdexcept>
 #include<iostream>
 
+namespace ogl {
+
 Texture::Texture(const char* image, GLenum texType, GLenum slot, GLenum /*format*/, GLenum /*pixelType*/)
 {
 	type = texType;
@@ -105,3 +107,4 @@ Texture& Texture::operator=(Texture&& other) noexcept
 	}
 	return *this;
 }
+} // namespace ogl

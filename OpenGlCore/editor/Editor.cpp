@@ -23,6 +23,8 @@
 #include <cmath>
 #include <algorithm>
 
+namespace ogl {
+
 // ---------------------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------------------
@@ -1101,3 +1103,5 @@ void Editor::Log(const std::string& msg)
 	console.push_back(msg);
 	if (console.size() > 200) console.erase(console.begin());
 }
+
+} // namespace ogl

@@ -7,6 +7,8 @@
 #include"VerTexBuffer.h"
 #include"ElementBuffer.h"
 
+namespace ogl {
+
 // One attribute in a vertex layout, e.g. { 3, GL_FLOAT } for a vec3.
 // Components are assumed to be 4 bytes each (GLfloat / GLuint), which covers this project.
 struct VertexAttribute
@@ -36,4 +38,6 @@ private:
 	ElementBuffer ebo;
 	GLsizei indexCount = 0;
 };
+
+} // namespace ogl
 #endif

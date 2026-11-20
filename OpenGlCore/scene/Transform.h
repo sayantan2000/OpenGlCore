@@ -5,6 +5,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+namespace ogl {
+
 // Simple TRS transform. Rotation is stored as Euler angles in DEGREES (X, Y, Z) for a
 // familiar, editable Inspector representation; the matrix composes T * R * S.
 struct Transform
@@ -29,4 +31,6 @@ struct Transform
 	}
 };
 
+
+} // namespace ogl
 #endif

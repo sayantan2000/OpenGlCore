@@ -10,6 +10,8 @@
 #include <iostream>
 #include <cmath>
 
+namespace ogl {
+
 using namespace physx;
 
 namespace
@@ -389,3 +391,5 @@ int PhysicsScene::OverlapSphere(const glm::vec3& c, float radius, std::vector<st
 const std::vector<ContactEvent>& PhysicsScene::Events() const { return impl->events; }
 void PhysicsScene::SetFixedTimestep(float dt) { if (dt > 0.0f) impl->fixedDt = dt; }
 float PhysicsScene::FixedTimestep() const { return impl->fixedDt; }
+
+} // namespace ogl

@@ -1,5 +1,7 @@
 #include "Primitive.h"
 
+namespace ogl {
+
 Primitive::Primitive(PrimitiveType a_type)
 {
 	switch (a_type)
@@ -80,3 +82,5 @@ int Primitive::VertexBytes() const
 int Primitive::IndexBytes() const {
 	return Indices.size() * 4;
 }
+
+} // namespace ogl

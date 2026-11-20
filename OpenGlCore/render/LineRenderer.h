@@ -7,6 +7,8 @@
 #include <glm/glm.hpp>
 #include "shaderClass.h"
 
+namespace ogl {
+
 // Minimal immediate-mode line drawer for editor overlays (light gizmos, rectangle-light
 // outlines, selection wireframes). Accumulate world-space segments, then Flush() with the
 // current view-projection. Owns a dynamic VBO + VAO and a small line shader (RAII).
@@ -34,4 +36,6 @@ private:
 	std::unique_ptr<Shader> shader;
 };
 
+
+} // namespace ogl
 #endif

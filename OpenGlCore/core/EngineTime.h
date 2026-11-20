@@ -1,4 +1,6 @@
 #pragma once
+
+namespace ogl {
 class Time
 {
 public:
@@ -7,3 +9,5 @@ public:
 	static inline float const _FixedTimeStep = 0.02f;
 };
 
+
+} // namespace ogl

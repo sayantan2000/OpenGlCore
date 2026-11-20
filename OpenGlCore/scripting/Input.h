@@ -5,6 +5,8 @@
 
 struct GLFWwindow;
 
+namespace ogl {
+
 // A thin input abstraction over GLFW: edge-detected key/button queries, mouse position/delta,
 // scroll, and simple named axes (e.g. "Horizontal" = A/D, "Vertical" = W/S). `Update` is
 // called once per frame by the Application after polling events; scripts read it in Play mode.
@@ -40,4 +42,6 @@ private:
 	bool firstUpdate = true;
 };
 
+
+} // namespace ogl
 #endif

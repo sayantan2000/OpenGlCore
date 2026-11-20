@@ -1,6 +1,8 @@
 #include "Window.h"
 #include <stdexcept>
 
+namespace ogl {
+
 Window::Window(int width, int height, const char* title, bool fullscreen)
 {
 	if (!glfwInit())
@@ -54,3 +56,5 @@ bool Window::ShouldClose() const { return glfwWindowShouldClose(window); }
 void Window::SwapBuffers() const { glfwSwapBuffers(window); }
 void Window::PollEvents() const { glfwPollEvents(); }
 void Window::SetTitle(const char* title) const { glfwSetWindowTitle(window, title); }
+
+} // namespace ogl

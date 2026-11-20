@@ -2,6 +2,8 @@
 #include<stdexcept>
 #include<cstring>
 
+namespace ogl {
+
 // Reads a text file and outputs a string with everything in the text file.
 // Throws std::runtime_error with a clear message if the file cannot be opened,
 // instead of throwing a bare errno (which surfaced as an unhelpful "abort").
@@ -176,3 +178,5 @@ GLuint Shader::GetUniFormId(const char* UniForm)
 {
 	return glGetUniformLocation(ID, UniForm);
 }
+
+} // namespace ogl

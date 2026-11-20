@@ -6,6 +6,8 @@
 #include <cstdint>
 #include "GameObject.h"
 
+namespace ogl {
+
 // Owns the scene's GameObjects and the current selection. Lightweight: a flat list plus a
 // selection tracked by stable object id (so create/delete/undo don't corrupt it). The
 // Inspector reads/writes the selected object's components directly.
@@ -152,4 +154,6 @@ private:
 	std::uint32_t nextId = 1;         // ids start at 1 (0 means "unassigned")
 };
 
+
+} // namespace ogl
 #endif

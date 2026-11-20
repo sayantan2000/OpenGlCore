@@ -7,6 +7,8 @@
 #include <unordered_map>
 #include <cmath>
 
+namespace ogl {
+
 // ---------------------------------------------------------------------------------------
 // Built-in example behaviors (demonstrate transform control, time, and input).
 // ---------------------------------------------------------------------------------------
@@ -122,3 +124,5 @@ float GetParam(const ScriptContext& ctx, const char* name, float def)
 	}
 	return def;
 }
+
+} // namespace ogl

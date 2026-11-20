@@ -4,6 +4,8 @@
 #include <glad/glad.h>
 #include <iostream>
 
+namespace ogl {
+
 // Lightweight OpenGL error checking for a 3.3 context (no KHR_debug dependency).
 // Drains the GL error queue and logs any errors with the originating file/line.
 // Usage: call glCheckError() after a group of GL calls you want to validate.
@@ -28,4 +30,6 @@ inline GLenum glCheckError_(const char* file, int line)
 
 #define glCheckError() glCheckError_(__FILE__, __LINE__)
 
+
+} // namespace ogl
 #endif

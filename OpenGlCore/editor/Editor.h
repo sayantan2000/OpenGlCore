@@ -9,6 +9,8 @@
 #include "PrimitiveLibrary.h"
 
 struct GLFWwindow;
+
+namespace ogl {
 class Scene;
 class Camera;
 class AssetManager;
@@ -132,4 +134,6 @@ private:
 	GameObject gizmoBefore;
 };
 
+
+} // namespace ogl
 #endif

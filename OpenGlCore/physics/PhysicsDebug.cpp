@@ -4,6 +4,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <cmath>
 
+namespace ogl {
+
 // Collider debug wireframes built purely from component data + the object's world transform,
 // so visualization works in both edit and play mode without touching PhysX.
 namespace
@@ -98,3 +100,5 @@ namespace PhysicsDebug
 		}
 	}
 }
+
+} // namespace ogl

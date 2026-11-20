@@ -7,6 +7,8 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
+namespace ogl {
+
 Text::Text(const char* fontPath, unsigned int pixelHeight, int screenWidth, int screenHeight)
 	: shader("./Shader/text.vert", "./Shader/text.frag")
 {
@@ -137,3 +139,5 @@ void Text::RenderText(const std::string& text, float x, float y, float scale, gl
 	if (!blendWas) glDisable(GL_BLEND);
 	if (depthWas) glEnable(GL_DEPTH_TEST);
 }
+
+} // namespace ogl

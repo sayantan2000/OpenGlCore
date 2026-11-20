@@ -3,6 +3,8 @@
 
 #include<glad/glad.h>
 
+namespace ogl {
+
 class ElementBuffer
 {
 public:
@@ -27,4 +29,6 @@ public:
 	void Delete();
 };
 
+
+} // namespace ogl
 #endif

@@ -6,6 +6,8 @@
 #include <glad/glad.h>
 #include "shaderClass.h"
 
+namespace ogl {
+
 // A metallic-roughness PBR material. Scalar factors are used directly; optional texture
 // maps override them when present. Texture units 3..7 are reserved for material maps
 // (0..2 are used by the IBL textures - see Renderer/pbr.frag).
@@ -36,4 +38,6 @@ struct PbrMaterial
 	void Bind(Shader& shader) const;
 };
 
+
+} // namespace ogl
 #endif

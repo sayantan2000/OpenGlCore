@@ -6,6 +6,8 @@
 
 #include"shaderClass.h"
 
+namespace ogl {
+
 class Texture
 {
 public:
@@ -31,4 +33,6 @@ public:
 	// Deletes a texture (idempotent)
 	void Delete();
 };
+
+} // namespace ogl
 #endif

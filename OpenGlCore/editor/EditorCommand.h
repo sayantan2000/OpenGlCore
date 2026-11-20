@@ -8,6 +8,8 @@
 #include "Scene.h"
 #include "GameObject.h"
 
+namespace ogl {
+
 // -----------------------------------------------------------------------------------------
 // Editor undo/redo (Command pattern).
 //
@@ -150,4 +152,6 @@ private:
 	size_t capacity = 128;
 };
 
+
+} // namespace ogl
 #endif

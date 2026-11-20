@@ -11,6 +11,8 @@
 #include <stb/stb.h>
 #include <tinyexr.h>
 
+namespace ogl {
+
 // Loads an equirectangular .hdr into a float RGB texture (no clamping). Returns 0 on failure.
 static GLuint LoadEquirectHDR(const std::string& path, int& outW, int& outH)
 {
@@ -336,3 +338,5 @@ IBL::~IBL()
 	if (cubeVAO) glDeleteVertexArrays(1, &cubeVAO);
 	delete backgroundShader;
 }
+
+} // namespace ogl

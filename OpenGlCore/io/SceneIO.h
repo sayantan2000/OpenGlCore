@@ -3,6 +3,8 @@
 
 #include <string>
 
+namespace ogl {
+
 class Scene;
 class AssetManager;
 struct PrimitiveLibrary;
@@ -23,4 +25,6 @@ namespace SceneIO
 		AssetManager& assets, const PrimitiveLibrary& primitives, std::string* error = nullptr);
 }
 
+
+} // namespace ogl
 #endif

@@ -4,6 +4,8 @@
 #include<glad/glad.h>
 #include"VerTexBuffer.h"
 
+namespace ogl {
+
 class VerTexArray
 {
 public:
@@ -29,4 +31,6 @@ public:
 	// Deletes the VAO (idempotent)
 	void Delete();
 };
+
+} // namespace ogl
 #endif

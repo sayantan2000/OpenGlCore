@@ -5,6 +5,8 @@
 #include <string>
 #include <glm/glm.hpp>
 
+namespace ogl {
+
 class Mesh;
 
 // Built-in primitive mesh shapes the editor's "Create > Primitive" menu can instantiate.
@@ -38,4 +40,6 @@ struct PrimitiveLibrary
 	}
 };
 
+
+} // namespace ogl
 #endif

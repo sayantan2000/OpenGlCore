@@ -5,6 +5,8 @@
 #include <vector>
 #include <cstdint>
 
+namespace ogl {
+
 class Scene;
 class Input;
 class PhysicsScene;
@@ -49,4 +51,6 @@ public:
 // ScriptRegistry.cpp (needs the GameObject layout).
 float GetParam(const ScriptContext& ctx, const char* name, float def);
 
+
+} // namespace ogl
 #endif

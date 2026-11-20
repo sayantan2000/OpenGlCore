@@ -2,6 +2,8 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <cmath>
 
+namespace ogl {
+
 LineRenderer::LineRenderer()
 {
 	shader = std::make_unique<Shader>("./Shader/line.vert", "./Shader/line.frag");
@@ -78,3 +80,5 @@ void LineRenderer::Flush(const glm::mat4& viewProj, const glm::vec3& color, floa
 
 	verts.clear();
 }
+
+} // namespace ogl

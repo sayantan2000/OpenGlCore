@@ -7,6 +7,8 @@
 #include <functional>
 #include "ScriptBehavior.h"  // ScriptBehavior, ScriptParam
 
+namespace ogl {
+
 class ScriptBehavior;
 
 // A name -> factory registry for script behaviors, so behaviors can be referenced by string
@@ -26,4 +28,6 @@ namespace ScriptRegistry
 	std::vector<ScriptParam> ParamsOf(const std::string& name);
 }
 
+
+} // namespace ogl
 #endif

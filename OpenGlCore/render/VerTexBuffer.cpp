@@ -1,6 +1,8 @@
 #include"VerTexBuffer.h"
 #include"GLUtils.h"
 
+namespace ogl {
+
 // Constructor that generates a Vertex Buffer Object and links it to vertices
 VerTexBuffer::VerTexBuffer(GLfloat* vertices, GLsizeiptr size)
 {
@@ -53,3 +55,4 @@ VerTexBuffer& VerTexBuffer::operator=(VerTexBuffer&& other) noexcept
 	}
 	return *this;
 }
+} // namespace ogl

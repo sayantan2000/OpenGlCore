@@ -9,6 +9,8 @@
 #include "Transform.h"
 #include "PbrMaterial.h"
 
+namespace ogl {
+
 class Model;
 class Mesh;
 
@@ -139,4 +141,6 @@ struct GameObject
 	}
 };
 
+
+} // namespace ogl
 #endif

@@ -11,6 +11,8 @@
 #include<glm/gtc/matrix_transform.hpp>
 #include<glm/gtc/type_ptr.hpp>
 
+namespace ogl {
+
 std::string get_file_contents(const char* filename);
 
 class Shader
@@ -44,4 +46,6 @@ public:
 private:
 	GLuint GetUniFormId(const char* UniForm);
 };
+
+} // namespace ogl
 #endif

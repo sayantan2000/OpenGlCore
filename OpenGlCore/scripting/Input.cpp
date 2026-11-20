@@ -3,6 +3,8 @@
 #include <GLFW/glfw3.h>
 #include <cstring>
 
+namespace ogl {
+
 void Input::Init(GLFWwindow* w)
 {
 	window = w;
@@ -60,3 +62,5 @@ float Input::GetAxis(const char* axis) const
 	}
 	return 0.0f;
 }
+
+} // namespace ogl

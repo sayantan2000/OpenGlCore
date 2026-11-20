@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <cmath>
 
+namespace ogl {
+
 static void SetVec3(GLuint id, const char* name, const glm::vec3& v)
 {
 	glUniform3fv(glGetUniformLocation(id, name), 1, glm::value_ptr(v));
@@ -69,3 +71,5 @@ void LightSet::Upload(Shader& shader) const
 		SetFloat(id, (base + "halfHeight").c_str(), rects[i].halfHeight);
 	}
 }
+
+} // namespace ogl

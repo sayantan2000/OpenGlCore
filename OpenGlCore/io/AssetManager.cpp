@@ -3,6 +3,8 @@
 #include "Model.h"
 #include <iostream>
 
+namespace ogl {
+
 AssetManager::AssetManager() = default;
 AssetManager::~AssetManager() = default; // unique_ptrs free the GL resources (RAII)
 
@@ -51,3 +53,5 @@ Model* AssetManager::GetModel(const std::string& path)
 		return nullptr;
 	}
 }
+
+} // namespace ogl

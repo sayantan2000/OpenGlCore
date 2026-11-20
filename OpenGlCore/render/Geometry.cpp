@@ -1,6 +1,8 @@
 #include "Geometry.h"
 #include <cmath>
 
+namespace ogl {
+
 namespace
 {
 	constexpr float PI = 3.14159265358979323846f;
@@ -292,3 +294,5 @@ namespace Geometry
 		}
 	}
 }
+
+} // namespace ogl

@@ -7,7 +7,7 @@ int main()
 {
 	try
 	{
-		Application app;
+		ogl::Application app;
 		app.Run();
 	}
 	catch (const std::exception& e)

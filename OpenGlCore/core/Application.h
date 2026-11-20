@@ -23,6 +23,8 @@
 #include "shaderClass.h"
 #include <vector>
 
+namespace ogl {
+
 // Owns the window, render targets, the Scene, the ImGui Editor, and the main loop. Wires the
 // PBR + IBL + HDR pipeline and the editor together; main() just constructs and runs.
 class Application
@@ -83,4 +85,6 @@ private:
 	float fov = 60.0f;
 };
 
+
+} // namespace ogl
 #endif

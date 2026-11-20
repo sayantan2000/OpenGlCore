@@ -1,6 +1,8 @@
 #include"ElementBuffer.h"
 #include"GLUtils.h"
 
+namespace ogl {
+
 // Constructor that generates a Elements Buffer Object and links it to indices
 ElementBuffer::ElementBuffer(GLuint* indices, GLsizeiptr size)
 {
@@ -53,3 +55,4 @@ ElementBuffer& ElementBuffer::operator=(ElementBuffer&& other) noexcept
 	}
 	return *this;
 }
+} // namespace ogl

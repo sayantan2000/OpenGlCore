@@ -1,5 +1,7 @@
 #include"Mesh.h"
 
+namespace ogl {
+
 Mesh::Mesh(const std::vector<GLfloat>& vertices,
            const std::vector<GLuint>& indices,
            const std::vector<VertexAttribute>& layout)
@@ -35,3 +37,5 @@ void Mesh::Draw()
 	vao.Bind();
 	glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
 }
+
+} // namespace ogl

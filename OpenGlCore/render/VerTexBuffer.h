@@ -3,6 +3,8 @@
 
 #include<glad/glad.h>
 
+namespace ogl {
+
 class VerTexBuffer
 {
 public:
@@ -28,4 +30,6 @@ public:
 	void Delete();
 };
 
+
+} // namespace ogl
 #endif

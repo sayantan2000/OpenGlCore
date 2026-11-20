@@ -4,6 +4,8 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+namespace ogl {
+
 // Owns GLFW init, the window + GL context, and GLAD loading. Constructing it leaves a
 // current OpenGL 3.3 core context ready for use; destroying it tears everything down.
 class Window
@@ -29,4 +31,6 @@ private:
 	int height = 0;
 };
 
+
+} // namespace ogl
 #endif

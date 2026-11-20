@@ -6,6 +6,8 @@
 #include <unordered_map>
 #include <glad/glad.h>
 
+namespace ogl {
+
 class Texture;
 class Model;
 
@@ -40,4 +42,6 @@ private:
 	std::unordered_map<std::string, std::unique_ptr<Model>> models;
 };
 
+
+} // namespace ogl
 #endif

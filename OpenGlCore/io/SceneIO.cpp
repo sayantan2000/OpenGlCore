@@ -10,6 +10,8 @@
 #include <sstream>
 #include <memory>
 
+namespace ogl {
+
 using json = nlohmann::json;
 
 namespace
@@ -292,3 +294,5 @@ namespace SceneIO
 		return JsonToScene(scene, root, assets, primitives, error);
 	}
 }
+
+} // namespace ogl

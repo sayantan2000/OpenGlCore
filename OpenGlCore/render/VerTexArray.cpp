@@ -1,6 +1,8 @@
 #include"VerTexArray.h"
 #include"GLUtils.h"
 
+namespace ogl {
+
 // Constructor that generates a VAO ID
 VerTexArray::VerTexArray()
 {
@@ -60,3 +62,4 @@ VerTexArray& VerTexArray::operator=(VerTexArray&& other) noexcept
 	}
 	return *this;
 }
+} // namespace ogl

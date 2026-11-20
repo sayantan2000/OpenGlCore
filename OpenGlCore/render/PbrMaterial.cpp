@@ -1,6 +1,8 @@
 #include "PbrMaterial.h"
 #include <glm/gtc/type_ptr.hpp>
 
+namespace ogl {
+
 // Material texture units (IBL uses 0..2).
 static constexpr int UNIT_ALBEDO = 3;
 static constexpr int UNIT_NORMAL = 4;
@@ -36,3 +38,5 @@ void PbrMaterial::Bind(Shader& shader) const
 	BindMap(shader, "u_hasRoughnessMap", "u_roughnessMap", roughnessMap, UNIT_ROUGHNESS);
 	BindMap(shader, "u_hasAoMap", "u_aoMap", aoMap, UNIT_AO);
 }
+
+} // namespace ogl

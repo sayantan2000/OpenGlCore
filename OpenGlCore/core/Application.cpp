@@ -13,6 +13,8 @@
 #include <vector>
 #include <cmath>
 
+namespace ogl {
+
 static constexpr bool FULLSCREEN = true;
 
 Application::Application()
@@ -699,3 +701,5 @@ Application::~Application()
 	DestroyHdrTarget();
 	if (emptyVAO) glDeleteVertexArrays(1, &emptyVAO);
 }
+
+} // namespace ogl

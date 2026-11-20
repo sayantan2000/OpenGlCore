@@ -6,6 +6,8 @@
 #include <memory>
 #include <glm/glm.hpp>
 
+namespace ogl {
+
 class Scene;
 
 // Result of a scene query (raycast / sphere cast).
@@ -81,4 +83,6 @@ namespace PhysicsDebug
 	void BuildColliderLines(Scene& scene, std::vector<DebugLine>& out);
 }
 
+
+} // namespace ogl
 #endif
