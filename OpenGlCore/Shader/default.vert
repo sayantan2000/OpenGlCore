@@ -24,7 +24,11 @@ void main()
 	data.Texcord0=aTex;
 	//rotating The Normals Asper Model Updates Its Rotations
 	data.Position=vec3(model*vec4(aPos,1));
-	data.Normal=normalize(Normal*transpose(mat3(model)));
+	// Correct normal matrix = inverse-transpose of the model's upper-left 3x3.
+	// Handles non-uniform scale correctly (the old transpose(mat3(model)) did not,
+	// and multiplied the vector on the wrong side).
+	mat3 normalMatrix = transpose(inverse(mat3(model)));
+	data.Normal=normalize(normalMatrix * Normal);
 
 
 	gl_Position =MVP*vec4(aPos*scale,1);

@@ -361,3 +361,19 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# vcpkg installed packages (restored from vcpkg.json)
+vcpkg_installed/
+
+# Fonts: supply your own .ttf locally (not committed to avoid redistributing
+# proprietary fonts). See CLAUDE.md. The app expects ./Fonts/arial.ttf by default.
+OpenGlCore/Fonts/*.ttf
+
+# Wooden chair: only the 4 maps the renderer uses are committed (BaseColor/Normal/
+# Roughness/AO). The rest are large and unused.
+OpenGlCore/Models/wooden_chair_ukipagtbw_high/*_Bump.jpg
+OpenGlCore/Models/wooden_chair_ukipagtbw_high/*_Cavity.jpg
+OpenGlCore/Models/wooden_chair_ukipagtbw_high/*_Displacement.jpg
+OpenGlCore/Models/wooden_chair_ukipagtbw_high/*_Gloss.jpg
+OpenGlCore/Models/wooden_chair_ukipagtbw_high/*_Specular.jpg
+OpenGlCore/Models/wooden_chair_ukipagtbw_high/ukipagtbw.json

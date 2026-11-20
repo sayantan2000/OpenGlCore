@@ -97,7 +97,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glfw3dll.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -115,7 +115,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glfw3dll.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -125,11 +125,13 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)core;$(ProjectDir)render;$(ProjectDir)scene;$(ProjectDir)editor;$(ProjectDir)scripting;$(ProjectDir)physics;$(ProjectDir)io;$(ProjectDir)..\vcpkg_installed\x64-windows\include;$(ProjectDir)..\vcpkg_installed\x64-windows\include\physx;$(ProjectDir)Libraries\source\zlib-1.3.1;$(ProjectDir)Libraries\source\ImGuizmo;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\vcpkg_installed\x64-windows\debug\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3dll.lib;opengl32.lib;freetyped.lib;assimp-vc145-mtd.lib;imguid.lib;PhysX_64.lib;PhysXCommon_64.lib;PhysXFoundation_64.lib;PhysXExtensions_static_64.lib;PhysXPvdSDK_static_64.lib;PhysXCooking_64.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -141,29 +143,59 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)core;$(ProjectDir)render;$(ProjectDir)scene;$(ProjectDir)editor;$(ProjectDir)scripting;$(ProjectDir)physics;$(ProjectDir)io;$(ProjectDir)..\vcpkg_installed\x64-windows\include;$(ProjectDir)..\vcpkg_installed\x64-windows\include\physx;$(ProjectDir)Libraries\source\zlib-1.3.1;$(ProjectDir)Libraries\source\ImGuizmo;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\vcpkg_installed\x64-windows\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3dll.lib;opengl32.lib;freetype.lib;assimp-vc145-mt.lib;imgui.lib;PhysX_64.lib;PhysXCommon_64.lib;PhysXFoundation_64.lib;PhysXExtensions_static_64.lib;PhysXPvdSDK_static_64.lib;PhysXCooking_64.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Camera.cpp" />
-    <ClCompile Include="glad.c" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="Model.cpp" />
-    <ClCompile Include="Primitive.cpp" />
-    <ClCompile Include="shaderClass.cpp" />
-    <ClCompile Include="stb.cpp" />
-    <ClCompile Include="Text.cpp" />
-    <ClCompile Include="Texture.cpp" />
-    <ClCompile Include="Time.cpp" />
-    <ClCompile Include="Triangles.cpp" />
-    <ClCompile Include="VerTexArray.cpp" />
-    <ClCompile Include="VerTexBuffer.cpp" />
+    <ClCompile Include="core\Application.cpp" />
+    <ClCompile Include="core\Window.cpp" />
+    <ClCompile Include="core\EngineTime.cpp" />
+    <ClCompile Include="core\main.cpp" />
+    <ClCompile Include="render\shaderClass.cpp" />
+    <ClCompile Include="render\Mesh.cpp" />
+    <ClCompile Include="render\VerTexArray.cpp" />
+    <ClCompile Include="render\VerTexBuffer.cpp" />
+    <ClCompile Include="render\ElementBuffer.cpp" />
+    <ClCompile Include="render\Geometry.cpp" />
+    <ClCompile Include="render\Camera.cpp" />
+    <ClCompile Include="render\IBL.cpp" />
+    <ClCompile Include="render\PbrMaterial.cpp" />
+    <ClCompile Include="render\Light.cpp" />
+    <ClCompile Include="render\Model.cpp" />
+    <ClCompile Include="render\Text.cpp" />
+    <ClCompile Include="render\Texture.cpp" />
+    <ClCompile Include="render\LineRenderer.cpp" />
+    <ClCompile Include="render\Primitive.cpp" />
+    <ClCompile Include="editor\Editor.cpp" />
+    <ClCompile Include="scripting\Input.cpp" />
+    <ClCompile Include="scripting\ScriptRegistry.cpp" />
+    <ClCompile Include="scripting\ScriptSystem.cpp" />
+    <ClCompile Include="physics\PhysicsScene.cpp" />
+    <ClCompile Include="physics\PhysicsDebug.cpp" />
+    <ClCompile Include="io\AssetManager.cpp" />
+    <ClCompile Include="io\SceneIO.cpp" />
+    <ClCompile Include="thirdparty\glad.c" />
+    <ClCompile Include="thirdparty\stb.cpp" />
+    <ClCompile Include="thirdparty\tinyexr.cpp" />
+    <ClCompile Include="Libraries\source\ImGuizmo\ImGuizmo.cpp" />
+    <ClCompile Include="Libraries\source\zlib-1.3.1\adler32.c" />
+    <ClCompile Include="Libraries\source\zlib-1.3.1\crc32.c" />
+    <ClCompile Include="Libraries\source\zlib-1.3.1\inffast.c" />
+    <ClCompile Include="Libraries\source\zlib-1.3.1\inflate.c" />
+    <ClCompile Include="Libraries\source\zlib-1.3.1\inftrees.c" />
+    <ClCompile Include="Libraries\source\zlib-1.3.1\zutil.c" />
+    <ClCompile Include="Libraries\source\zlib-1.3.1\compress.c" />
+    <ClCompile Include="Libraries\source\zlib-1.3.1\uncompr.c" />
+    <ClCompile Include="Libraries\source\zlib-1.3.1\deflate.c" />
+    <ClCompile Include="Libraries\source\zlib-1.3.1\trees.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shader\default.frag" />
@@ -175,19 +207,70 @@
     <Image Include="Images\World.jpg" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Camera.h" />
-    <ClInclude Include="Enums.h" />
-    <ClInclude Include="Model.h" />
-    <ClInclude Include="Primitive.h" />
-    <ClInclude Include="shaderClass.h" />
-    <ClInclude Include="Text.h" />
-    <ClInclude Include="Texture.h" />
-    <ClInclude Include="Time.h" />
-    <ClInclude Include="Triangles.h" />
-    <ClInclude Include="VerTexArray.h" />
-    <ClInclude Include="VerTexBuffer.h" />
+    <ClInclude Include="core\Application.h" />
+    <ClInclude Include="core\Window.h" />
+    <ClInclude Include="core\EngineTime.h" />
+    <ClInclude Include="core\GLUtils.h" />
+    <ClInclude Include="core\Enums.h" />
+    <ClInclude Include="render\shaderClass.h" />
+    <ClInclude Include="render\Mesh.h" />
+    <ClInclude Include="render\VerTexArray.h" />
+    <ClInclude Include="render\VerTexBuffer.h" />
+    <ClInclude Include="render\ElementBuffer.h" />
+    <ClInclude Include="render\Geometry.h" />
+    <ClInclude Include="render\Camera.h" />
+    <ClInclude Include="render\IBL.h" />
+    <ClInclude Include="render\PbrMaterial.h" />
+    <ClInclude Include="render\Light.h" />
+    <ClInclude Include="render\Model.h" />
+    <ClInclude Include="render\Text.h" />
+    <ClInclude Include="render\Texture.h" />
+    <ClInclude Include="render\LineRenderer.h" />
+    <ClInclude Include="render\Primitive.h" />
+    <ClInclude Include="scene\Transform.h" />
+    <ClInclude Include="scene\GameObject.h" />
+    <ClInclude Include="scene\Scene.h" />
+    <ClInclude Include="scene\PrimitiveLibrary.h" />
+    <ClInclude Include="editor\Editor.h" />
+    <ClInclude Include="editor\EditorCommand.h" />
+    <ClInclude Include="editor\Picking.h" />
+    <ClInclude Include="scripting\Input.h" />
+    <ClInclude Include="scripting\ScriptBehavior.h" />
+    <ClInclude Include="scripting\ScriptRegistry.h" />
+    <ClInclude Include="scripting\ScriptSystem.h" />
+    <ClInclude Include="physics\Physics.h" />
+    <ClInclude Include="io\AssetManager.h" />
+    <ClInclude Include="io\SceneIO.h" />
+    <ClInclude Include="Libraries\source\ImGuizmo\ImGuizmo.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <!-- Copy runtime assets next to the executable so the app can be run by double-click.
+       Shaders/textures are loaded via paths relative to the working directory. -->
+  <Target Name="CopyRuntimeAssets" AfterTargets="Build">
+    <ItemGroup>
+      <_ShaderFiles Include="$(ProjectDir)Shader\**\*" />
+      <_ImageFiles Include="$(ProjectDir)Images\**\*" />
+      <_FontFiles Include="$(ProjectDir)Fonts\**\*" />
+      <_ModelFiles Include="$(ProjectDir)Models\**\*" />
+      <_SkyboxFiles Include="$(ProjectDir)SKYBOX\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_ShaderFiles)" DestinationFiles="@(_ShaderFiles->'$(OutDir)Shader\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_ImageFiles)" DestinationFiles="@(_ImageFiles->'$(OutDir)Images\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_ModelFiles)" DestinationFiles="@(_ModelFiles->'$(OutDir)Models\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" Condition="'@(_ModelFiles)' != ''" />
+    <Copy SourceFiles="@(_SkyboxFiles)" DestinationFiles="@(_SkyboxFiles->'$(OutDir)SKYBOX\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" Condition="'@(_SkyboxFiles)' != ''" />
+    <Copy SourceFiles="@(_FontFiles)" DestinationFiles="@(_FontFiles->'$(OutDir)Fonts\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" Condition="'@(_FontFiles)' != ''" />
+  </Target>
+  <!-- Copy vcpkg runtime DLLs (Assimp + its dependencies) next to the executable. -->
+  <Target Name="CopyVcpkgDlls" AfterTargets="Build" Condition="'$(Platform)'=='x64'">
+    <PropertyGroup>
+      <_VcpkgBin Condition="'$(Configuration)'=='Debug'">$(ProjectDir)..\vcpkg_installed\x64-windows\debug\bin</_VcpkgBin>
+      <_VcpkgBin Condition="'$(Configuration)'=='Release'">$(ProjectDir)..\vcpkg_installed\x64-windows\bin</_VcpkgBin>
+    </PropertyGroup>
+    <ItemGroup>
+      <_VcpkgDlls Include="$(_VcpkgBin)\*.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_VcpkgDlls)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" Condition="'@(_VcpkgDlls)' != ''" />
+  </Target>
 </Project>

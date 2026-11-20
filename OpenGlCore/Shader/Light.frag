@@ -5,5 +5,6 @@ uniform vec4 LightColor;
 uniform float _Time;
 void main()
 {
-   gl_FragColor =LightColor;
+   // Use the declared output instead of the deprecated gl_FragColor (not valid in core).
+   FragColor = LightColor;
 }
