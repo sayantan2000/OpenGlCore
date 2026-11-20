@@ -3,6 +3,7 @@
 
 #include<vector>
 #include<glad/glad.h>
+#include<glm/glm.hpp>
 #include"VerTexArray.h"
 #include"VerTexBuffer.h"
 #include"ElementBuffer.h"
@@ -32,11 +33,19 @@ public:
 
 	GLsizei IndexCount() const { return indexCount; }
 
+	// CPU-side copy of the geometry (positions only + index list), retained so the physics
+	// layer can cook convex/triangle-mesh colliders without re-reading the GPU buffers.
+	// Positions are in the mesh's own object space (attribute 0 of the 11-float layout).
+	const std::vector<glm::vec3>& Positions() const { return cpuPositions; }
+	const std::vector<GLuint>&    Indices()   const { return cpuIndices; }
+
 private:
 	VerTexArray vao;      // declared first -> constructed first (default ctor gens the VAO)
 	VerTexBuffer vbo;
 	ElementBuffer ebo;
 	GLsizei indexCount = 0;
+	std::vector<glm::vec3> cpuPositions; // retained for physics mesh cooking
+	std::vector<GLuint>    cpuIndices;
 };
 
 } // namespace ogl

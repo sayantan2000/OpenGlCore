@@ -15,6 +15,18 @@ Mesh::Mesh(const std::vector<GLfloat>& vertices,
 	for (const auto& attr : layout)
 		stride += (GLsizei)(attr.numComponents * sizeof(GLfloat));
 
+	// Retain a CPU copy of positions + indices for physics mesh cooking. Position is
+	// attribute 0 (first 3 floats of each vertex); strideFloats is the per-vertex span.
+	GLuint strideFloats = 0;
+	for (const auto& attr : layout) strideFloats += attr.numComponents;
+	if (strideFloats >= 3 && !vertices.empty())
+	{
+		cpuPositions.reserve(vertices.size() / strideFloats);
+		for (size_t i = 0; i + 2 < vertices.size(); i += strideFloats)
+			cpuPositions.emplace_back(vertices[i], vertices[i + 1], vertices[i + 2]);
+	}
+	cpuIndices = indices;
+
 	vao.Bind();
 	// Bind the EBO while the VAO is bound so the VAO records the element buffer binding.
 	ebo.Bind();

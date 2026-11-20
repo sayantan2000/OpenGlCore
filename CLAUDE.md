@@ -178,8 +178,10 @@ Entry: `core/main.cpp` → `ogl::Application` (owns window, scene, render loop).
 - `Model` has no normal/metallic/roughness map import (diffuse color/texture only).
 - Legacy shaders/classes (`default.*`, `Light.*`, `Primitive`, `Texture`) remain but are
   no longer used by the main scene; candidates for removal.
-- Physics: **convex/triangle mesh colliders** fall back to a box (cooking deferred — needs
-  retained vertex data); no character controller / joints / CCD. See docs/PHYSICS.md.
+- Physics: **convex/triangle mesh colliders are cooked** from retained CPU geometry
+  (`Mesh`/`Model`) via PhysX standalone cooking, cached per `sourceId`, scaled via `PxMeshScale`;
+  dynamic triangle meshes auto-downgrade to a convex hull (Unity-style). No character controller /
+  joints / CCD yet. See docs/PHYSICS.md.
 - The rectangle light is a representative-point approximation, not full LTC; gizmo rotation
   round-trips through Euler angles so very large rotations may drift slightly.
 - Tier-2 leftovers: event/messaging bus, Lua scripting, gamepad. Editor: multi-select, prefabs.

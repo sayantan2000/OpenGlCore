@@ -642,6 +642,9 @@ void Application::Run()
 			bool geo = g->meshRenderer && (g->meshRenderer->model || g->meshRenderer->mesh);
 			std::cout << "[SELFTEST] first='" << g->name << "' geometryResolved=" << geo
 				<< " albedoMap=" << (g->meshRenderer ? g->meshRenderer->material.albedoMap : 0) << std::endl;
+			if (g->meshRenderer && g->meshRenderer->model)
+				std::cout << "[SELFTEST] model collision verts=" << g->meshRenderer->model->CollisionPositions().size()
+					<< " indices=" << g->meshRenderer->model->CollisionIndices().size() << std::endl;
 		}
 		// Exercise the script system (Play-mode logic) headlessly: tick a scripted object and
 		// confirm its transform changes, then "stop".
@@ -685,8 +688,33 @@ void Application::Run()
 		}
 		else std::cout << "[SELFTEST] PhysX unavailable" << std::endl;
 
+		// Exercise convex-mesh cooking: switch a dynamic object's collider to ConvexMesh so the
+		// physics layer must cook a hull from the retained renderer geometry, then drop it.
+		bool meshColliderOk = false;
+		if (loaded && physics && physics->Available())
+		{
+			GameObject* ball = nullptr;
+			for (auto& o : reloaded.Objects())
+				if (o->rigidBody && o->rigidBody->type == RigidBodyComponent::BodyType::Dynamic
+					&& o->meshRenderer && (o->meshRenderer->mesh || o->meshRenderer->model))
+				{ ball = o.get(); break; }
+			if (ball && ball->collider)
+			{
+				ball->collider->shape = ColliderComponent::Shape::ConvexMesh;
+				ball->transform.position.y = 4.0f;
+				float y0 = ball->transform.position.y;
+				physics->Begin(reloaded);
+				for (int i = 0; i < 120; ++i) physics->Step(reloaded, 1.0f / 60.0f);
+				float y1 = ball->transform.position.y;
+				physics->End();
+				meshColliderOk = (y1 < y0 - 0.5f) && (y1 > -5.0f);
+				std::cout << "[SELFTEST] ConvexMesh cook drop y0=" << y0 << " y1=" << y1 << std::endl;
+			}
+			else std::cout << "[SELFTEST] (no mesh-renderer dynamic object for cook test)" << std::endl;
+		}
+
 		std::cout << "[SELFTEST] "
-			<< ((saved && loaded && reloaded.Count() == before && scriptsOk && physicsOk) ? "PASS" : "FAIL") << std::endl;
+			<< ((saved && loaded && reloaded.Count() == before && scriptsOk && physicsOk && meshColliderOk) ? "PASS" : "FAIL") << std::endl;
 		return;
 	}
 

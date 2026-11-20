@@ -49,6 +49,11 @@ public:
 	// Uniform scale factor that makes the largest dimension equal `targetSize` units.
 	float ScaleToFit(float targetSize) const;
 
+	// Aggregated CPU geometry (model space) across all sub-meshes, for cooking a physics
+	// convex/triangle-mesh collider. Built lazily on first call and cached.
+	const std::vector<glm::vec3>&    CollisionPositions() const;
+	const std::vector<unsigned int>& CollisionIndices() const;
+
 private:
 	struct SubMesh
 	{
@@ -60,6 +65,12 @@ private:
 	std::string directory;      // folder of the model file (for external textures)
 	glm::vec3 boundsMin = glm::vec3(0.0f);
 	glm::vec3 boundsMax = glm::vec3(0.0f);
+
+	// Lazily-built aggregated collision geometry (see CollisionPositions/Indices).
+	void BuildCollisionGeometry() const;
+	mutable std::vector<glm::vec3>    collisionPositions;
+	mutable std::vector<unsigned int> collisionIndices;
+	mutable bool collisionBuilt = false;
 
 	// Recursively walks the node hierarchy, accumulating each node's transform and
 	// baking it into the vertices of the meshes that node references.

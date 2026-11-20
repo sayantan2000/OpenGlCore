@@ -50,8 +50,10 @@ Make what already exists persistent and composable. Highest return, low risk.
       `PhysicsScene*` in their context (raycast, set velocity, add force/impulse).
 - [x] **Physics debug visualization** — collider/trigger wireframes (`PhysicsDebug`, component
       -based, works in edit + play), toggle in the View menu.
-- [ ] **Mesh colliders** (Convex / Triangle) — enum present; cooking deferred (needs retained
-      vertex data), currently falls back to a box with a logged warning.
+- [x] **Mesh colliders** (Convex / Triangle) — cooked from retained CPU geometry
+      (`Mesh`/`Model`) via PhysX standalone cooking, cached per `sourceId`, scaled with
+      `PxMeshScale`; dynamic triangle meshes auto-downgrade to a convex hull. Validated by the
+      headless self-test (ConvexMesh cook + drop settles at y≈-0.45).
 - [ ] **Character controller** (kinematic) for player movement.
 
 ## Tier 4 — Rendering depth

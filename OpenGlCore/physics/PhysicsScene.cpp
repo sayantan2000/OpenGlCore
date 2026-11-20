@@ -1,12 +1,15 @@
 #include "Physics.h"
 #include "Scene.h"
 #include "GameObject.h"
+#include "Model.h"
+#include "Mesh.h"
 
 #include <PxPhysicsAPI.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <unordered_map>
+#include <string>
 #include <iostream>
 #include <cmath>
 
@@ -56,6 +59,9 @@ struct PhysicsScene::Impl : public PxSimulationEventCallback
 	PxScene* scene = nullptr;
 
 	std::unordered_map<std::uint32_t, PxRigidActor*> actors; // GameObject id -> actor
+	// Cooked mesh caches, keyed by the renderer's sourceId so duplicate objects share one cook.
+	std::unordered_map<std::string, PxConvexMesh*>   convexCache;
+	std::unordered_map<std::string, PxTriangleMesh*> triangleCache;
 	std::vector<ContactEvent> events;
 	glm::vec3 gravity = glm::vec3(0.0f, -9.81f, 0.0f);
 	float fixedDt = 1.0f / 60.0f;
@@ -104,6 +110,10 @@ struct PhysicsScene::Impl : public PxSimulationEventCallback
 	void Shutdown()
 	{
 		End();
+		for (auto& [k, m] : convexCache)   if (m) m->release();
+		for (auto& [k, m] : triangleCache) if (m) m->release();
+		convexCache.clear();
+		triangleCache.clear();
 		if (dispatcher) { dispatcher->release(); dispatcher = nullptr; }
 		if (physics) { physics->release(); physics = nullptr; }
 		if (foundation) { foundation->release(); foundation = nullptr; }
@@ -119,8 +129,70 @@ struct PhysicsScene::Impl : public PxSimulationEventCallback
 		out = physics->createScene(desc);
 	}
 
-	PxShape* MakeShape(const ColliderComponent& col, const glm::vec3& scale)
+	// Pulls CPU collision geometry (object-space positions + indices) from a GameObject's
+	// mesh renderer. Returns false when the object has no usable geometry.
+	static bool GetGeometry(const GameObject* go, const glm::vec3*& pts, PxU32& nPts,
+		size_t ptStride, const unsigned int*& idx, PxU32& nIdx)
 	{
+		if (!go || !go->meshRenderer) return false;
+		const MeshRenderer& mr = *go->meshRenderer;
+		if (mr.kind == MeshRenderer::Geometry::Model && mr.model)
+		{
+			const auto& p = mr.model->CollisionPositions();
+			const auto& i = mr.model->CollisionIndices();
+			if (p.empty() || i.empty()) return false;
+			pts = p.data(); nPts = (PxU32)p.size(); idx = i.data(); nIdx = (PxU32)i.size();
+			return true;
+		}
+		if (mr.kind == MeshRenderer::Geometry::Mesh && mr.mesh)
+		{
+			const auto& p = mr.mesh->Positions();
+			const auto& i = mr.mesh->Indices();
+			if (p.empty() || i.empty()) return false;
+			pts = p.data(); nPts = (PxU32)p.size(); idx = i.data(); nIdx = (PxU32)i.size();
+			return true;
+		}
+		return false;
+	}
+
+	PxConvexMesh* CookConvex(const glm::vec3* pts, PxU32 nPts)
+	{
+		PxConvexMeshDesc desc;
+		desc.points.count = nPts;
+		desc.points.stride = sizeof(glm::vec3);
+		desc.points.data = pts;
+		desc.flags = PxConvexFlag::eCOMPUTE_CONVEX;
+		desc.vertexLimit = 255;
+		PxCookingParams params(physics->getTolerancesScale());
+		PxConvexMeshCookingResult::Enum result;
+		PxConvexMesh* mesh = PxCreateConvexMesh(params, desc, physics->getPhysicsInsertionCallback(), &result);
+		if (!mesh)
+			std::cerr << "[Physics] Convex cook failed (result " << (int)result << ")." << std::endl;
+		return mesh;
+	}
+
+	PxTriangleMesh* CookTriangle(const glm::vec3* pts, PxU32 nPts, const unsigned int* idx, PxU32 nIdx)
+	{
+		PxTriangleMeshDesc desc;
+		desc.points.count = nPts;
+		desc.points.stride = sizeof(glm::vec3);
+		desc.points.data = pts;
+		desc.triangles.count = nIdx / 3;
+		desc.triangles.stride = 3 * sizeof(unsigned int);
+		desc.triangles.data = idx;
+		PxCookingParams params(physics->getTolerancesScale());
+		PxTriangleMeshCookingResult::Enum result;
+		PxTriangleMesh* mesh = PxCreateTriangleMesh(params, desc, physics->getPhysicsInsertionCallback(), &result);
+		if (!mesh)
+			std::cerr << "[Physics] Triangle cook failed (result " << (int)result << ")." << std::endl;
+		return mesh;
+	}
+
+	// `dynamicSim` is true for a non-kinematic dynamic actor: PhysX cannot simulate a triangle
+	// mesh on such a body, so a TriangleMesh request is cooked as a convex hull instead.
+	PxShape* MakeShape(const GameObject* go, const glm::vec3& scale, bool dynamicSim)
+	{
+		const ColliderComponent& col = *go->collider;
 		PxMaterial* mat = physics->createMaterial(col.material.staticFriction, col.material.dynamicFriction, col.material.restitution);
 		float sx = scale.x, sy = scale.y, sz = scale.z;
 		float avg = (sx + sy + sz) / 3.0f;
@@ -141,11 +213,40 @@ struct PhysicsScene::Impl : public PxSimulationEventCallback
 			break;
 		case ColliderComponent::Shape::ConvexMesh:
 		case ColliderComponent::Shape::TriangleMesh:
-			// Mesh cooking needs retained vertex data (not kept by the renderer yet); fall back
-			// to a box of the collider extents and warn. See docs/PHYSICS.md "Known limitations".
-			std::cerr << "[Physics] Mesh collider cooking not implemented; using a box approximation." << std::endl;
-			shape = physics->createShape(PxBoxGeometry(col.halfExtents.x * sx, col.halfExtents.y * sy, col.halfExtents.z * sz), *mat, true);
+		{
+			const glm::vec3* pts = nullptr; const unsigned int* idx = nullptr;
+			PxU32 nPts = 0, nIdx = 0;
+			if (!GetGeometry(go, pts, nPts, sizeof(glm::vec3), idx, nIdx))
+			{
+				std::cerr << "[Physics] Mesh collider on '" << go->name
+					<< "' has no geometry; using a box approximation." << std::endl;
+				shape = physics->createShape(PxBoxGeometry(col.halfExtents.x * sx, col.halfExtents.y * sy, col.halfExtents.z * sz), *mat, true);
+				break;
+			}
+			const std::string& key = go->meshRenderer->sourceId;
+			PxMeshScale meshScale(PxVec3(sx, sy, sz));
+			// Triangle meshes can only back static/kinematic actors; downgrade dynamic ones.
+			bool wantTriangle = (col.shape == ColliderComponent::Shape::TriangleMesh) && !dynamicSim;
+			if (col.shape == ColliderComponent::Shape::TriangleMesh && dynamicSim)
+				std::cerr << "[Physics] Triangle-mesh collider on dynamic '" << go->name
+					<< "' is unsupported; cooking a convex hull instead." << std::endl;
+
+			if (wantTriangle)
+			{
+				PxTriangleMesh*& cached = triangleCache[key];
+				if (!cached) cached = CookTriangle(pts, nPts, idx, nIdx);
+				if (cached) shape = physics->createShape(PxTriangleMeshGeometry(cached, meshScale), *mat, true);
+			}
+			else
+			{
+				PxConvexMesh*& cached = convexCache[key];
+				if (!cached) cached = CookConvex(pts, nPts);
+				if (cached) shape = physics->createShape(PxConvexMeshGeometry(cached, meshScale), *mat, true);
+			}
+			if (!shape) // cook failed -> safe fallback
+				shape = physics->createShape(PxBoxGeometry(col.halfExtents.x * sx, col.halfExtents.y * sy, col.halfExtents.z * sz), *mat, true);
 			break;
+		}
 		}
 		if (shape)
 		{
@@ -175,11 +276,12 @@ struct PhysicsScene::Impl : public PxSimulationEventCallback
 			DecomposeTR(gameScene.WorldMatrix(go), pos, rot, scale);
 			PxTransform pose(pos, rot);
 
-			PxShape* shape = MakeShape(*go->collider, scale);
-			if (!shape) continue;
-
 			bool hasBody = go->rigidBody && go->rigidBody->enabled;
 			RigidBodyComponent::BodyType type = hasBody ? go->rigidBody->type : RigidBodyComponent::BodyType::Static;
+			bool dynamicSim = (type == RigidBodyComponent::BodyType::Dynamic);
+
+			PxShape* shape = MakeShape(go, scale, dynamicSim);
+			if (!shape) continue;
 
 			PxRigidActor* actor = nullptr;
 			if (type == RigidBodyComponent::BodyType::Static)

@@ -62,14 +62,23 @@
 
 ## Validation
 - Headless self-test (`OGL_SCENE_SELFTEST=1 OpenGlCore.exe`): saves+reloads the scene (incl.
-  physics components), ticks a script, and **drops a dynamic sphere ~2 s** — verified it falls
-  from y=4 and settles at y≈-0.45 on the ground (radius 1.5 resting on the ground top at ≈-1.95).
-  Prints `[SELFTEST] PASS`. Visual/interaction behavior is not verified here (no display).
+  physics components), ticks a script, **drops a dynamic sphere ~2 s** (falls from y=4, settles at
+  y≈-0.45), and **cooks a ConvexMesh collider and drops it** (also settles at y≈-0.45), confirming
+  hull cooking from retained geometry. Also reports the chair Model's aggregated collision vertex
+  count. Prints `[SELFTEST] PASS`. Visual/interaction behavior is not verified here (no display).
+
+## Mesh collider cooking
+- `Mesh` retains a CPU copy of positions + indices (`Mesh::Positions()`/`Indices()`, extracted
+  from attribute 0 at construction); `Model` aggregates them across sub-meshes
+  (`Model::CollisionPositions()`/`CollisionIndices()`, built lazily, index-offset per sub-mesh).
+- `PhysicsScene` cooks on demand via the standalone `PxCreateConvexMesh` / `PxCreateTriangleMesh`
+  (insertion-callback API — no intermediate stream), scaled with `PxMeshScale` from the object's
+  world scale, and **caches** each cooked mesh by the renderer's `sourceId` so duplicate objects
+  share one hull. Cooked meshes are released on `PhysicsScene` shutdown.
+- **Triangle mesh on a dynamic (non-kinematic) body** is unsupported by PhysX; such a request is
+  automatically cooked as a **convex hull** instead (with a warning), matching Unity's behavior.
+  Triangle meshes work on static/kinematic bodies. A cook failure falls back to a box.
 
 ## Known limitations / next steps
-- **Convex/Triangle mesh colliders**: the enum is present but cooking is not yet implemented
-  (the renderer doesn't retain CPU vertex data); they currently fall back to a box of the
-  collider extents and log a warning. Next: retain vertices on `Mesh`/`Model` and cook via
-  `PxCookConvexMesh`/`PxCookTriangleMesh`.
 - No character controller, joints, or continuous collision (CCD) yet.
 - GPU/PVD features unused (`PhysXGpu_64.dll` present but not engaged).

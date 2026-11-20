@@ -298,4 +298,31 @@ void Model::Draw(Shader& shader)
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+void Model::BuildCollisionGeometry() const
+{
+	if (collisionBuilt) return;
+	collisionBuilt = true;
+	for (const auto& sub : meshes)
+	{
+		const auto& pos = sub.mesh.Positions();
+		const auto& idx = sub.mesh.Indices();
+		unsigned int base = (unsigned int)collisionPositions.size();
+		collisionPositions.insert(collisionPositions.end(), pos.begin(), pos.end());
+		collisionIndices.reserve(collisionIndices.size() + idx.size());
+		for (unsigned int i : idx) collisionIndices.push_back(base + i);
+	}
+}
+
+const std::vector<glm::vec3>& Model::CollisionPositions() const
+{
+	BuildCollisionGeometry();
+	return collisionPositions;
+}
+
+const std::vector<unsigned int>& Model::CollisionIndices() const
+{
+	BuildCollisionGeometry();
+	return collisionIndices;
+}
+
 } // namespace ogl
