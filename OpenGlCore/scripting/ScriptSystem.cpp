@@ -4,6 +4,7 @@
 #include "Scene.h"
 #include "GameObject.h"
 #include "Physics.h"
+#include "EventBus.h"
 
 namespace ogl {
 
@@ -19,7 +20,7 @@ void ScriptSystem::Begin(Scene& scene, Input& input, PhysicsScene* physics, floa
 		if (!go->script || !go->script->enabled || go->script->behaviorName.empty()) continue;
 		auto behavior = ScriptRegistry::Create(go->script->behaviorName);
 		if (!behavior) continue;
-		ScriptContext ctx{ *go, scene, input, deltaTime, physics };
+		ScriptContext ctx{ *go, scene, input, deltaTime, physics, eventBus };
 		behavior->OnStart(ctx);
 		instances.emplace(go->id, std::move(behavior));
 	}
@@ -33,7 +34,7 @@ void ScriptSystem::Update(Scene& scene, Input& input, PhysicsScene* physics, flo
 	{
 		GameObject* go = scene.FindById(id);
 		if (!go || !go->active || !go->script || !go->script->enabled) continue;
-		ScriptContext ctx{ *go, scene, input, deltaTime, physics };
+		ScriptContext ctx{ *go, scene, input, deltaTime, physics, eventBus };
 		behavior->OnUpdate(ctx);
 	}
 }
@@ -47,14 +48,29 @@ void ScriptSystem::DispatchPhysicsEvents(Scene& scene, Input& input, PhysicsScen
 		if (it == instances.end()) return;
 		GameObject* go = scene.FindById(id);
 		if (!go) return;
-		ScriptContext ctx{ *go, scene, input, deltaTime, physics };
+		ScriptContext ctx{ *go, scene, input, deltaTime, physics, eventBus };
 		if (trigger) it->second->OnTrigger(ctx, other);
 		else it->second->OnCollision(ctx, other);
 	};
 	for (const ContactEvent& e : physics->Events())
 	{
-		if (e.kind == ContactEvent::Kind::CollisionEnter) { fire(e.a, e.b, false); fire(e.b, e.a, false); }
-		else if (e.kind == ContactEvent::Kind::TriggerEnter) { fire(e.a, e.b, true); fire(e.b, e.a, true); }
+		switch (e.kind)
+		{
+		case ContactEvent::Kind::CollisionEnter:
+			fire(e.a, e.b, false); fire(e.b, e.a, false);
+			if (eventBus) eventBus->Publish(CollisionBeginEvent{ e.a, e.b });
+			break;
+		case ContactEvent::Kind::CollisionExit:
+			if (eventBus) eventBus->Publish(CollisionEndEvent{ e.a, e.b });
+			break;
+		case ContactEvent::Kind::TriggerEnter:
+			fire(e.a, e.b, true); fire(e.b, e.a, true);
+			if (eventBus) eventBus->Publish(TriggerBeginEvent{ e.a, e.b });
+			break;
+		case ContactEvent::Kind::TriggerExit:
+			if (eventBus) eventBus->Publish(TriggerEndEvent{ e.a, e.b });
+			break;
+		}
 	}
 }
 

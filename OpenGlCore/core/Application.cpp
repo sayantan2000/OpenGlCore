@@ -41,6 +41,7 @@ Application::Application()
 	lines = std::make_unique<LineRenderer>();
 	physics = std::make_unique<PhysicsScene>();
 	input.Init(window.Handle());
+	scripts.SetEventBus(&events);
 	ScriptRegistry::RegisterBuiltins();
 	BuildPrimitiveLibrary();
 
@@ -635,6 +636,7 @@ void Application::Run()
 		bool loaded = SceneIO::Load(reloaded, "scene_selftest.json", *assets, primitives, &err);
 		std::cout << "[SELFTEST] load=" << (loaded ? "ok" : ("FAIL:" + err))
 			<< " objects=" << reloaded.Count() << std::endl;
+		bool countOk = (reloaded.Count() == before); // capture before any test mutates the scene
 		// Spot-check the first object's resolved geometry + a material map.
 		if (loaded && reloaded.Count() > 0)
 		{
@@ -713,8 +715,54 @@ void Application::Run()
 			else std::cout << "[SELFTEST] (no mesh-renderer dynamic object for cook test)" << std::endl;
 		}
 
+		// Exercise the EventBus: a direct subscribe/publish round-trip plus re-entrant unsubscribe.
+		bool eventBusOk = false;
+		{
+			EventBus bus;
+			int hits = 0; std::uint32_t lastSender = 0;
+			SubscriptionId id = bus.Subscribe<GameMessage>([&](const GameMessage& m){ ++hits; lastSender = m.sender; });
+			bus.Publish(GameMessage{ "ping", 42, 1.0f });
+			bus.Publish(GameMessage{ "ping", 7, 1.0f });
+			bus.Unsubscribe(id);
+			bus.Publish(GameMessage{ "ping", 99, 1.0f }); // should NOT be received
+			eventBusOk = (hits == 2 && lastSender == 7);
+			std::cout << "[SELFTEST] EventBus hits=" << hits << " lastSender=" << lastSender << std::endl;
+		}
+
+		// Exercise the character controller: drop a kinematic capsule and confirm it falls, then
+		// becomes grounded and settles (proves the PxController cook + sweep + ground detection).
+		bool characterOk = false;
+		if (loaded && physics && physics->Available())
+		{
+			auto ch = std::make_unique<GameObject>();
+			ch->name = "TestCharacter";
+			ch->transform.position = glm::vec3(0.0f, 3.0f, 0.0f);
+			CharacterControllerComponent cc; cc.radius = 0.35f; cc.height = 1.2f;
+			ch->characterController = cc;
+			std::uint32_t chId = reloaded.Add(std::move(ch))->id;
+
+			physics->Begin(reloaded);
+			bool hasCtrl = physics->HasCharacter(chId);
+			float vy = 0.0f; bool grounded = false;
+			for (int i = 0; i < 180; ++i) // ~3s
+			{
+				float dt = 1.0f / 60.0f;
+				if (grounded && vy < 0.0f) vy = -1.0f;
+				vy += -20.0f * dt;
+				grounded = physics->MoveCharacter(chId, glm::vec3(0.0f, vy * dt, 0.0f), dt);
+				physics->Step(reloaded, dt);
+			}
+			GameObject* chBack = reloaded.FindById(chId);
+			float y1 = chBack ? chBack->transform.position.y : 999.0f;
+			physics->End();
+			characterOk = hasCtrl && grounded && (y1 < 3.0f) && (y1 > -3.0f);
+			std::cout << "[SELFTEST] Character hasCtrl=" << hasCtrl << " grounded=" << grounded
+				<< " y1=" << y1 << std::endl;
+		}
+
 		std::cout << "[SELFTEST] "
-			<< ((saved && loaded && reloaded.Count() == before && scriptsOk && physicsOk && meshColliderOk) ? "PASS" : "FAIL") << std::endl;
+			<< ((saved && loaded && countOk && scriptsOk && physicsOk && meshColliderOk
+				&& eventBusOk && characterOk) ? "PASS" : "FAIL") << std::endl;
 		return;
 	}
 

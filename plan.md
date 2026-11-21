@@ -31,13 +31,18 @@ Make what already exists persistent and composable. Highest return, low risk.
       live instances by object id during Play). Example behaviors: Rotator, FloatBob, WasdMover.
       *(Lua/sol2 scripting deferred — native interface first.)*
 - [x] **Input system** (`Input.{h,cpp}`) — edge-detected keys/buttons, mouse pos/delta, named
-      axes (Horizontal/Vertical); polled once per frame, read by scripts. *(Gamepad TODO.)*
-- [ ] **Event/messaging system** — decoupled communication (collision events, UI events, etc.).
+      axes (Horizontal/Vertical), **gamepad** (up to 4 pads via GLFW: buttons/sticks/triggers,
+      deadzone, connection detection, sticks folded into the named axes), and a **configurable
+      action layer** (name→keys/mouse/pad buttons; defaults Jump/Fire/Sprint/Cancel/Submit).
+- [x] **Event/messaging system** (`core/EventBus.h`) — type-safe publish/subscribe keyed by
+      `std::type_index`; re-entrant-safe dispatch + deferred unsubscribe (no dangling callbacks);
+      `ScopedSubscription` RAII; built-in Collision/Trigger/PlayMode events + generic `GameMessage`.
+      Exposed to scripts via `ScriptContext::events`; physics contacts are re-published on the bus.
 - [ ] *(Defer)* **Real ECS (EnTT)** — only once component variety/entity counts justify it.
 - [x] **Script parameters in the Inspector** — behaviors declare params (`DeclareParams`),
       per-object values live in `ScriptComponent.params` (serialized), editable as DragFloats;
       behaviors read them via `GetParam`.
-- [ ] *(Next)* Lua scripting, gamepad input.
+- [ ] *(Next)* Lua scripting.
 
 ## Tier 3 — Physics & spatial systems  ⏳ IN PROGRESS
 - [x] **Physics — NVIDIA PhysX 5.5** (via vcpkg): `PhysicsScene` wraps PhysX behind a pImpl.
@@ -54,7 +59,12 @@ Make what already exists persistent and composable. Highest return, low risk.
       (`Mesh`/`Model`) via PhysX standalone cooking, cached per `sourceId`, scaled with
       `PxMeshScale`; dynamic triangle meshes auto-downgrade to a convex hull. Validated by the
       headless self-test (ConvexMesh cook + drop settles at y≈-0.45).
-- [ ] **Character controller** (kinematic) for player movement.
+- [x] **Character controller** — PhysX `PxCapsuleController` (swept kinematic capsule, not a
+      force-driven rigid body): `CharacterControllerComponent` (radius/height/slope/step/skin +
+      move/run/jump/gravity tuning), `PhysicsScene::MoveCharacter/IsCharacterGrounded`, a built-in
+      `CharacterController` script (WASD/stick + gravity + jump + ground detection), Inspector
+      section, SceneIO serialization, and capsule debug viz. Validated headlessly (capsule falls,
+      grounds, settles).
 
 ## Tier 4 — Rendering depth
 - [ ] **Shadow mapping** — directional (cascaded) first, then spot/point. Biggest realism jump.

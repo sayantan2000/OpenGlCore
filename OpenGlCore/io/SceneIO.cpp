@@ -105,6 +105,15 @@ namespace
 				const CameraComponent& c = *go->cameraComp;
 				j["cameraComp"] = { {"fov", c.fov}, {"near", c.nearClip}, {"far", c.farClip}, {"isMain", c.isMain}, {"enabled", c.enabled} };
 			}
+			if (go->characterController)
+			{
+				const CharacterControllerComponent& cc = *go->characterController;
+				j["characterController"] = {
+					{"radius", cc.radius}, {"height", cc.height}, {"slopeLimitDeg", cc.slopeLimitDeg},
+					{"stepOffset", cc.stepOffset}, {"skinWidth", cc.skinWidth}, {"center", Vec3(cc.center)},
+					{"moveSpeed", cc.moveSpeed}, {"runSpeed", cc.runSpeed}, {"jumpHeight", cc.jumpHeight},
+					{"gravity", cc.gravity}, {"enabled", cc.enabled} };
+			}
 			arr.push_back(std::move(j));
 		}
 		root["objects"] = std::move(arr);
@@ -268,6 +277,24 @@ namespace
 				cc.isMain = c.value("isMain", true);
 				cc.enabled = c.value("enabled", true);
 				go->cameraComp = cc;
+			}
+
+			if (j.contains("characterController"))
+			{
+				const json& c = j["characterController"];
+				CharacterControllerComponent cc;
+				cc.radius = c.value("radius", 0.35f);
+				cc.height = c.value("height", 1.2f);
+				cc.slopeLimitDeg = c.value("slopeLimitDeg", 50.0f);
+				cc.stepOffset = c.value("stepOffset", 0.35f);
+				cc.skinWidth = c.value("skinWidth", 0.02f);
+				cc.center = ToVec3(c.value("center", json()), glm::vec3(0.0f));
+				cc.moveSpeed = c.value("moveSpeed", 4.0f);
+				cc.runSpeed = c.value("runSpeed", 7.0f);
+				cc.jumpHeight = c.value("jumpHeight", 1.4f);
+				cc.gravity = c.value("gravity", -20.0f);
+				cc.enabled = c.value("enabled", true);
+				go->characterController = cc;
 			}
 
 			scene.Add(std::move(go)); // preserves the saved id, keeps nextId monotonic

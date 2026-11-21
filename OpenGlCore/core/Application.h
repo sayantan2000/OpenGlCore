@@ -20,6 +20,7 @@
 #include "Input.h"
 #include "ScriptSystem.h"
 #include "Physics.h"
+#include "EventBus.h"
 #include "shaderClass.h"
 #include <vector>
 
@@ -72,7 +73,8 @@ private:
 	PrimitiveLibrary primitives;
 	std::unique_ptr<LineRenderer> lines;
 
-	Input input;               // keyboard/mouse abstraction (polled each frame)
+	Input input;               // keyboard/mouse/gamepad abstraction (polled each frame)
+	EventBus events;           // engine + gameplay publish/subscribe bus
 	ScriptSystem scripts;      // runs script behaviors during Play mode
 	std::unique_ptr<PhysicsScene> physics; // NVIDIA PhysX simulation (Play mode)
 

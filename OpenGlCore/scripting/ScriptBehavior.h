@@ -10,6 +10,7 @@ namespace ogl {
 class Scene;
 class Input;
 class PhysicsScene;
+class EventBus;
 struct GameObject;
 
 // A tunable parameter a behavior exposes to the editor (name + default value). Per-object
@@ -29,6 +30,7 @@ struct ScriptContext
 	Input& input;
 	float deltaTime;
 	PhysicsScene* physics = nullptr; // raycasts / velocities / forces (null if unavailable)
+	EventBus* events = nullptr;      // publish/subscribe engine + gameplay events (null if none)
 };
 
 // Base class for a gameplay behavior. Instances live only during Play mode (owned by the

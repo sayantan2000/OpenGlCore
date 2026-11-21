@@ -679,6 +679,32 @@ void Editor::DrawInspector(Scene& scene, RenderSettings& settings)
 		else if (ImGui::Button("Add Collider"))
 		{ GameObject b = *go; go->collider = ColliderComponent{}; history.Push(std::make_unique<ModifyCommand>(go->id, b, *go, "Add Collider")); }
 	}
+
+	// Character Controller
+	{
+		if (go->characterController)
+		{
+			if (ImGui::CollapsingHeader("Character Controller", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				CharacterControllerComponent& cc = *go->characterController;
+				ImGui::DragFloat("Radius", &cc.radius, 0.01f, 0.01f, 5.0f); TrackEdit(scene, go, "CC Radius");
+				ImGui::DragFloat("Height", &cc.height, 0.01f, 0.01f, 10.0f); TrackEdit(scene, go, "CC Height");
+				ImGui::DragFloat3("Center", &cc.center.x, 0.02f); TrackEdit(scene, go, "CC Center");
+				ImGui::DragFloat("Slope Limit", &cc.slopeLimitDeg, 0.5f, 0.0f, 89.0f); TrackEdit(scene, go, "CC Slope");
+				ImGui::DragFloat("Step Offset", &cc.stepOffset, 0.01f, 0.0f, 2.0f); TrackEdit(scene, go, "CC Step");
+				ImGui::DragFloat("Skin Width", &cc.skinWidth, 0.001f, 0.001f, 0.2f); TrackEdit(scene, go, "CC Skin");
+				ImGui::SeparatorText("Movement (used by CharacterController script)");
+				ImGui::DragFloat("Move Speed", &cc.moveSpeed, 0.1f, 0.0f, 50.0f); TrackEdit(scene, go, "CC MoveSpeed");
+				ImGui::DragFloat("Run Speed", &cc.runSpeed, 0.1f, 0.0f, 50.0f); TrackEdit(scene, go, "CC RunSpeed");
+				ImGui::DragFloat("Jump Height", &cc.jumpHeight, 0.05f, 0.0f, 20.0f); TrackEdit(scene, go, "CC Jump");
+				ImGui::DragFloat("Gravity", &cc.gravity, 0.1f, -100.0f, 0.0f); TrackEdit(scene, go, "CC Gravity");
+				if (ImGui::Button("Remove Character Controller"))
+				{ GameObject b = *go; go->characterController.reset(); history.Push(std::make_unique<ModifyCommand>(go->id, b, *go, "Remove Character Controller")); }
+			}
+		}
+		else if (ImGui::Button("Add Character Controller"))
+		{ GameObject b = *go; go->characterController = CharacterControllerComponent{}; history.Push(std::make_unique<ModifyCommand>(go->id, b, *go, "Add Character Controller")); }
+	}
 }
 
 void Editor::DrawConsole(const RenderSettings& settings)

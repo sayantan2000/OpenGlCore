@@ -12,6 +12,7 @@ namespace
 {
 	const glm::vec3 kColliderColor(0.2f, 0.9f, 0.4f);
 	const glm::vec3 kTriggerColor(0.2f, 0.7f, 1.0f);
+	const glm::vec3 kCharacterColor(1.0f, 0.85f, 0.2f);
 
 	void Line(std::vector<DebugLine>& out, const glm::vec3& a, const glm::vec3& b, const glm::vec3& c)
 	{
@@ -45,6 +46,23 @@ namespace
 			prev = p;
 		}
 	}
+
+	// Upright capsule (two cap circles + four side rails), axis-aligned at world position `wc`.
+	void Capsule(std::vector<DebugLine>& out, const glm::vec3& wc, float radius, float halfHeight, const glm::vec3& col)
+	{
+		glm::mat4 t = glm::translate(glm::mat4(1.0f), wc);
+		float hh = halfHeight;
+		Circle(out, t, glm::vec3(0, hh, 0), radius, 1, col);
+		Circle(out, t, glm::vec3(0, -hh, 0), radius, 1, col);
+		Circle(out, t, glm::vec3(0, hh, 0), radius, 0, col);
+		Circle(out, t, glm::vec3(0, hh, 0), radius, 2, col);
+		Circle(out, t, glm::vec3(0, -hh, 0), radius, 0, col);
+		Circle(out, t, glm::vec3(0, -hh, 0), radius, 2, col);
+		Line(out, X(t, glm::vec3(radius, -hh, 0)), X(t, glm::vec3(radius, hh, 0)), col);
+		Line(out, X(t, glm::vec3(-radius, -hh, 0)), X(t, glm::vec3(-radius, hh, 0)), col);
+		Line(out, X(t, glm::vec3(0, -hh, radius)), X(t, glm::vec3(0, hh, radius)), col);
+		Line(out, X(t, glm::vec3(0, -hh, -radius)), X(t, glm::vec3(0, hh, -radius)), col);
+	}
 }
 
 namespace PhysicsDebug
@@ -54,6 +72,15 @@ namespace PhysicsDebug
 		for (auto& up : scene.Objects())
 		{
 			GameObject* go = up.get();
+
+			// Character controller capsule (drawn even without a ColliderComponent).
+			if (go->active && go->characterController && go->characterController->enabled)
+			{
+				const CharacterControllerComponent& cc = *go->characterController;
+				glm::vec3 wc = glm::vec3(scene.WorldMatrix(go)[3]) + cc.center;
+				Capsule(out, wc, cc.radius, cc.height * 0.5f, kCharacterColor);
+			}
+
 			if (!go->active || !go->collider || !go->collider->enabled) continue;
 			const ColliderComponent& col = *go->collider;
 			glm::mat4 m = scene.WorldMatrix(go);

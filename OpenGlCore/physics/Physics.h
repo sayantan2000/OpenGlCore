@@ -59,6 +59,14 @@ public:
 	void AddForce(std::uint32_t id, const glm::vec3& force);
 	void AddImpulse(std::uint32_t id, const glm::vec3& impulse);
 
+	// Character controllers (PxController). Created in Begin() for objects with a
+	// CharacterControllerComponent. Move() sweeps the capsule by `disp` (already including any
+	// gravity the caller wants) and returns true if the controller is touching the ground after
+	// the move; the resolved world position is written back to the GameObject transform in Step().
+	bool HasCharacter(std::uint32_t id) const;
+	bool MoveCharacter(std::uint32_t id, const glm::vec3& disp, float dt);
+	bool IsCharacterGrounded(std::uint32_t id) const;
+
 	// Scene queries.
 	bool Raycast(const glm::vec3& origin, const glm::vec3& dir, float maxDist, RaycastHit& out) const;
 	bool SphereCast(const glm::vec3& origin, float radius, const glm::vec3& dir, float maxDist, RaycastHit& out) const;

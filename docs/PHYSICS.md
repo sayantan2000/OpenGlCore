@@ -79,6 +79,21 @@
   automatically cooked as a **convex hull** instead (with a warning), matching Unity's behavior.
   Triangle meshes work on static/kinematic bodies. A cook failure falls back to a box.
 
+## Character controller
+- `CharacterControllerComponent` (plain data on `GameObject`) drives a PhysX `PxCapsuleController`
+  created by `PhysicsScene::Begin` and owned by a `PxControllerManager`. It is a **swept kinematic
+  capsule**, not a force-driven rigid body, so movement is stable (no bouncing/tunnelling) with
+  automatic step-climbing and slope limiting.
+- API: `PhysicsScene::MoveCharacter(id, disp, dt)` sweeps the capsule and returns grounded state;
+  `IsCharacterGrounded(id)` / `HasCharacter(id)` query it. The resolved world position is written
+  back to the GameObject transform in `Step`.
+- The built-in `CharacterController` script (ScriptRegistry) reads WASD/left-stick + the "Sprint"
+  and "Jump" actions, integrates gravity on its own vertical velocity, and calls `MoveCharacter`.
+  Tuning (move/run speed, jump height, gravity) lives on the component. Inspector + SceneIO + a
+  capsule debug wireframe are wired. An object with a controller should not also have a RigidBody.
+- Validated headlessly: a capsule dropped from y=3 falls, becomes grounded and settles.
+
 ## Known limitations / next steps
-- No character controller, joints, or continuous collision (CCD) yet.
+- No joints or continuous collision (CCD) yet; the character controller has no built-in
+  slope-slide or moving-platform support beyond PhysX defaults.
 - GPU/PVD features unused (`PhysXGpu_64.dll` present but not engaged).

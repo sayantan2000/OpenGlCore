@@ -5,6 +5,8 @@
 #include "Mesh.h"
 
 #include <PxPhysicsAPI.h>
+#include <characterkinematic/PxControllerManager.h>
+#include <characterkinematic/PxCapsuleController.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -57,8 +59,13 @@ struct PhysicsScene::Impl : public PxSimulationEventCallback
 	PxPhysics* physics = nullptr;
 	PxDefaultCpuDispatcher* dispatcher = nullptr;
 	PxScene* scene = nullptr;
+	PxControllerManager* controllerMgr = nullptr;
+	PxMaterial* controllerMat = nullptr;
 
 	std::unordered_map<std::uint32_t, PxRigidActor*> actors; // GameObject id -> actor
+	// Character controllers keyed by GameObject id, with cached grounded state from the last move.
+	struct CharacterRuntime { PxController* controller = nullptr; float vertVel = 0.0f; bool grounded = false; };
+	std::unordered_map<std::uint32_t, CharacterRuntime> characters;
 	// Cooked mesh caches, keyed by the renderer's sourceId so duplicate objects share one cook.
 	std::unordered_map<std::string, PxConvexMesh*>   convexCache;
 	std::unordered_map<std::string, PxTriangleMesh*> triangleCache;
@@ -322,6 +329,42 @@ struct PhysicsScene::Impl : public PxSimulationEventCallback
 			scene->addActor(*actor);
 			actors[go->id] = actor;
 		}
+
+		// Second pass: create character controllers (independent of the collider list above).
+		if (!controllerMgr) controllerMgr = PxCreateControllerManager(*scene);
+		if (controllerMgr)
+		{
+			if (!controllerMat) controllerMat = physics->createMaterial(0.5f, 0.5f, 0.0f);
+			for (auto& up : gameScene.Objects())
+			{
+				GameObject* go = up.get();
+				if (!go->active || !go->characterController || !go->characterController->enabled) continue;
+				const CharacterControllerComponent& cc = *go->characterController;
+
+				glm::mat4 world = gameScene.WorldMatrix(go);
+				glm::vec3 wpos = glm::vec3(world[3]) + cc.center;
+
+				PxCapsuleControllerDesc desc;
+				desc.height = glm::max(cc.height, 0.01f);
+				desc.radius = glm::max(cc.radius, 0.01f);
+				desc.climbingMode = PxCapsuleClimbingMode::eEASY;
+				desc.slopeLimit = cosf(glm::radians(cc.slopeLimitDeg));
+				desc.stepOffset = cc.stepOffset;
+				desc.contactOffset = glm::max(cc.skinWidth, 0.001f);
+				desc.upDirection = PxVec3(0, 1, 0);
+				desc.material = controllerMat;
+				// PxController origin is the capsule centre; place it so the object pivot sits at wpos.
+				desc.position = PxExtendedVec3(wpos.x, wpos.y, wpos.z);
+				desc.reportCallback = nullptr;
+				if (!desc.isValid()) { std::cerr << "[Physics] Invalid character controller on '" << go->name << "'." << std::endl; continue; }
+
+				PxController* ctrl = controllerMgr->createController(desc);
+				if (!ctrl) continue;
+				if (ctrl->getActor()) ctrl->getActor()->userData = (void*)(std::uintptr_t)go->id;
+				characters[go->id] = CharacterRuntime{ ctrl, 0.0f, false };
+			}
+		}
+
 		accumulator = 0.0f;
 		running = true;
 	}
@@ -358,6 +401,21 @@ struct PhysicsScene::Impl : public PxSimulationEventCallback
 			glm::vec3 euler = glm::degrees(glm::eulerAngles(glm::normalize(glm::quat_cast(rot))));
 			go->transform.rotationEuler = euler;
 		}
+
+		// Character controllers own their world position; write it back (minus the local centre).
+		for (auto& [id, cr] : characters)
+		{
+			if (!cr.controller) continue;
+			GameObject* go = gameScene.FindById(id);
+			if (!go) continue;
+			PxExtendedVec3 p = cr.controller->getPosition();
+			glm::vec3 wpos = glm::vec3((float)p.x, (float)p.y, (float)p.z) - go->characterController->center;
+			glm::mat4 parentWorld(1.0f);
+			if (go->parentId != 0)
+				if (GameObject* par = gameScene.FindById(go->parentId)) parentWorld = gameScene.WorldMatrix(par);
+			glm::vec4 local = glm::inverse(parentWorld) * glm::vec4(wpos, 1.0f);
+			go->transform.position = glm::vec3(local);
+		}
 	}
 
 	void Step(Scene& gameScene, float dt)
@@ -388,6 +446,10 @@ struct PhysicsScene::Impl : public PxSimulationEventCallback
 
 	void End()
 	{
+		for (auto& [id, cr] : characters) if (cr.controller) cr.controller->release();
+		characters.clear();
+		if (controllerMgr) { controllerMgr->release(); controllerMgr = nullptr; }
+		if (controllerMat) { controllerMat->release(); controllerMat = nullptr; }
 		if (scene)
 		{
 			scene->release();
@@ -396,6 +458,17 @@ struct PhysicsScene::Impl : public PxSimulationEventCallback
 		actors.clear();
 		events.clear();
 		running = false;
+	}
+
+	bool MoveCharacter(std::uint32_t id, const glm::vec3& disp, float dt)
+	{
+		auto it = characters.find(id);
+		if (it == characters.end() || !it->second.controller) return false;
+		PxControllerFilters filters;
+		PxControllerCollisionFlags flags = it->second.controller->move(
+			PxVec3(disp.x, disp.y, disp.z), 0.001f, dt, filters);
+		it->second.grounded = flags.isSet(PxControllerCollisionFlag::eCOLLISION_DOWN);
+		return it->second.grounded;
 	}
 
 	PxRigidDynamic* Dyn(std::uint32_t id) const
@@ -439,6 +512,21 @@ void PhysicsScene::AddForce(std::uint32_t id, const glm::vec3& f)
 void PhysicsScene::AddImpulse(std::uint32_t id, const glm::vec3& f)
 {
 	if (auto* d = impl->Dyn(id)) d->addForce(PxVec3(f.x, f.y, f.z), PxForceMode::eIMPULSE);
+}
+
+bool PhysicsScene::HasCharacter(std::uint32_t id) const
+{
+	auto it = impl->characters.find(id);
+	return it != impl->characters.end() && it->second.controller != nullptr;
+}
+bool PhysicsScene::MoveCharacter(std::uint32_t id, const glm::vec3& disp, float dt)
+{
+	return impl->MoveCharacter(id, disp, dt);
+}
+bool PhysicsScene::IsCharacterGrounded(std::uint32_t id) const
+{
+	auto it = impl->characters.find(id);
+	return it != impl->characters.end() && it->second.grounded;
 }
 
 bool PhysicsScene::Raycast(const glm::vec3& o, const glm::vec3& dir, float maxDist, RaycastHit& out) const

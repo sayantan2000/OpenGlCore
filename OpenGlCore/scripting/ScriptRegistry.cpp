@@ -2,8 +2,10 @@
 #include "ScriptBehavior.h"
 #include "GameObject.h"
 #include "Input.h"
+#include "Physics.h"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
 #include <unordered_map>
 #include <cmath>
 
@@ -68,6 +70,52 @@ namespace
 		}
 	};
 
+	// Drives a CharacterControllerComponent via the PhysX character controller: WASD/left-stick
+	// movement on the XZ plane, gravity integration, jump (Jump action), and ground detection.
+	// This is the correct way to move a character — a swept kinematic capsule, not a dynamic body
+	// pushed by forces. Tuning comes from the CharacterControllerComponent (falls back to params).
+	class CharacterController : public ScriptBehavior
+	{
+	public:
+		void DeclareParams(std::vector<ScriptParam>& out) const override
+		{
+			out.push_back({ "moveSpeed", 4.0f });
+			out.push_back({ "runSpeed", 7.0f });
+			out.push_back({ "jumpHeight", 1.4f });
+			out.push_back({ "gravity", -20.0f });
+		}
+		void OnStart(ScriptContext&) override { vertVel = 0.0f; }
+		void OnUpdate(ScriptContext& ctx) override
+		{
+			if (!ctx.physics || !ctx.physics->HasCharacter(ctx.self.id)) return;
+
+			const CharacterControllerComponent* cc = ctx.self.characterController ? &*ctx.self.characterController : nullptr;
+			float moveSpeed = cc ? cc->moveSpeed : GetParam(ctx, "moveSpeed", 4.0f);
+			float runSpeed  = cc ? cc->runSpeed  : GetParam(ctx, "runSpeed", 7.0f);
+			float jumpH     = cc ? cc->jumpHeight: GetParam(ctx, "jumpHeight", 1.4f);
+			float gravity   = cc ? cc->gravity   : GetParam(ctx, "gravity", -20.0f);
+
+			float h = ctx.input.GetAxis("Horizontal");
+			float v = ctx.input.GetAxis("Vertical");
+			bool running = ctx.input.GetAction("Sprint");
+			float speed = running ? runSpeed : moveSpeed;
+
+			glm::vec3 planar(h, 0.0f, -v); // forward = -Z
+			if (glm::length(planar) > 1.0f) planar = glm::normalize(planar);
+
+			bool grounded = ctx.physics->IsCharacterGrounded(ctx.self.id);
+			if (grounded && vertVel < 0.0f) vertVel = -2.0f; // keep lightly pinned to the ground
+			if (grounded && ctx.input.GetActionDown("Jump"))
+				vertVel = std::sqrt(glm::max(2.0f * -gravity * jumpH, 0.0f)); // v = sqrt(2*g*h)
+			vertVel += gravity * ctx.deltaTime;
+
+			glm::vec3 disp = planar * speed * ctx.deltaTime + glm::vec3(0.0f, vertVel * ctx.deltaTime, 0.0f);
+			ctx.physics->MoveCharacter(ctx.self.id, disp, ctx.deltaTime);
+		}
+	private:
+		float vertVel = 0.0f;
+	};
+
 	struct Registry
 	{
 		std::unordered_map<std::string, ScriptRegistry::Factory> factories;
@@ -95,6 +143,7 @@ namespace ScriptRegistry
 		Register("Rotator", [] { return std::make_unique<Rotator>(); });
 		Register("FloatBob", [] { return std::make_unique<FloatBob>(); });
 		Register("WasdMover", [] { return std::make_unique<WasdMover>(); });
+		Register("CharacterController", [] { return std::make_unique<CharacterController>(); });
 	}
 
 	std::unique_ptr<ScriptBehavior> Create(const std::string& name)

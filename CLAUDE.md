@@ -184,4 +184,16 @@ Entry: `core/main.cpp` → `ogl::Application` (owns window, scene, render loop).
   joints / CCD yet. See docs/PHYSICS.md.
 - The rectangle light is a representative-point approximation, not full LTC; gizmo rotation
   round-trips through Euler angles so very large rotations may drift slightly.
-- Tier-2 leftovers: event/messaging bus, Lua scripting, gamepad. Editor: multi-select, prefabs.
+- Tier-2 leftovers: Lua scripting. Editor: multi-select, prefabs. (Event bus, gamepad input and
+  a PhysX character controller are now implemented — see below.)
+- **Event bus** (`core/EventBus.h`): type-safe publish/subscribe (`Subscribe<T>`/`Publish<T>`,
+  `ScopedSubscription`), re-entrant-safe. Owned by `Application` (`events`), set on `ScriptSystem`
+  (`SetEventBus`), reachable from scripts via `ScriptContext::events`. Physics contacts are
+  re-published as `CollisionBegin/End`/`TriggerBegin/End`; also a generic `GameMessage`.
+- **Gamepad**: `Input` now covers up to 4 gamepads (buttons/sticks/triggers, deadzone, connection
+  detection) plus a configurable **action** layer (`BindAction`/`GetAction(Down)`); left stick is
+  folded into the "Horizontal"/"Vertical" named axes.
+- **Character controller**: `CharacterControllerComponent` + PhysX `PxCapsuleController` (swept
+  kinematic capsule). Drive it from scripts via `PhysicsScene::MoveCharacter` /
+  `IsCharacterGrounded`; built-in `CharacterController` behavior does WASD/stick + gravity + jump.
+  Do NOT also add a RigidBody to a character (they are alternatives).

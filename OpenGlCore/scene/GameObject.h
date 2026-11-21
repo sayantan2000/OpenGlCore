@@ -105,6 +105,27 @@ struct ColliderComponent
 	bool enabled = true;
 };
 
+// A kinematic character controller (PhysX PxCapsuleController). Unlike a dynamic rigid body it
+// does not respond to forces: it is moved explicitly (by scripts) and resolves collisions by
+// sweeping a capsule, giving stable walking/stepping/sloping with no bouncing or tunnelling.
+// Plain data on the GameObject; the live PxController is owned by the PhysicsScene during Play.
+// An object with this component should NOT also have a RigidBody (they are alternatives).
+struct CharacterControllerComponent
+{
+	float radius = 0.35f;       // capsule radius
+	float height = 1.2f;        // capsule height between the cap centres (total ~= height + 2*radius)
+	float slopeLimitDeg = 50.0f;// max walkable slope
+	float stepOffset = 0.35f;   // max auto-climbable step height
+	float skinWidth = 0.02f;    // contact offset (anti-jitter)
+	glm::vec3 center = glm::vec3(0.0f); // local offset of the capsule from the object origin
+	// Movement tuning read by the built-in CharacterController script (also usable by custom ones).
+	float moveSpeed = 4.0f;
+	float runSpeed = 7.0f;
+	float jumpHeight = 1.4f;
+	float gravity = -20.0f;     // m/s^2 applied to the controller's own vertical velocity
+	bool enabled = true;
+};
+
 // A game camera that lives in the scene (Unity-style). The editor's free-fly "scene camera"
 // is used only in Edit mode; in Play mode the renderer views the scene through the active
 // game camera's world transform (looking down its local -Z). Plain data (serializable).
@@ -135,6 +156,7 @@ struct GameObject
 	std::optional<RigidBodyComponent> rigidBody;
 	std::optional<ColliderComponent> collider;
 	std::optional<CameraComponent> cameraComp;
+	std::optional<CharacterControllerComponent> characterController;
 
 	// Short type label for the Inspector header.
 	const char* TypeLabel() const
