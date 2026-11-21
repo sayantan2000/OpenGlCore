@@ -29,6 +29,12 @@ organized into small RAII modules; `main.cpp` is just an entry point.
   `IBL` is constructed). Missing → procedural-sky fallback, logs the expected path. EXR
   decoding uses the vendored **zlib** (now compiled into the project).
 - Build/run: `./build.ps1 -Run` (or `-Rebuild`), or VS → **Debug|x64** → F5, or VS Code **Ctrl+Shift+B**.
+  The solution now also builds **`EngineHub.exe`** (the standalone project-manager Hub, `Hub/`).
+- **Two apps**: the **Engine Hub** (`Hub/`, a separate process) manages projects and launches the
+  editor via `OpenGlCore.exe --project "<path>"`; the **editor** opens one project (default: a local
+  `Project/` folder). `EngineHub.exe --selftest` / `OGL_SCENE_SELFTEST` validate both headlessly.
+  See **docs/PROJECT_SYSTEM.md**, **docs/ASSET_PIPELINE.md**, **docs/MATERIAL_SYSTEM.md**,
+  **docs/EDITOR.md**, **docs/GAMEPLAY_SYSTEMS.md**.
 - Assets (Shader/, Images/, Fonts/, Models/) + vcpkg DLLs are copied next to the exe on
   build, so double-click works. From a terminal the CWD must contain those folders
   (`build.ps1 -Run` handles it). SKYBOX/ is also copied for the HDRI.

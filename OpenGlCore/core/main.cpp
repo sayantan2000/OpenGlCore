@@ -16,8 +16,7 @@ int main(int argc, char** argv)
 			if ((a == "--project" || a == "-p") && i + 1 < argc) projectPath = argv[++i];
 			else if (a.rfind("--project=", 0) == 0) projectPath = a.substr(10);
 		}
-		ogl::Application app;
-		app.SetProjectPath(projectPath);
+		ogl::Application app(projectPath);
 		app.Run();
 	}
 	catch (const std::exception& e)

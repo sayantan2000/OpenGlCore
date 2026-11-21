@@ -32,15 +32,14 @@ namespace ogl {
 class Application
 {
 public:
-	Application();
+	// `projectPath` is the project root to open (from the Hub via --project). Empty = use/create a
+	// local "Project" folder. It must be known at construction because init opens the project.
+	explicit Application(const std::string& projectPath = "");
 	~Application();
 	Application(const Application&) = delete;
 	Application& operator=(const Application&) = delete;
 
 	void Run();
-
-	// Project root to open (from the Hub via --project). Empty = use/create a local "Project".
-	void SetProjectPath(const std::string& path) { projectPath = path; }
 
 private:
 	void BuildScene();

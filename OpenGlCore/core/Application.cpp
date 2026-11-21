@@ -6,7 +6,9 @@
 #include "ScriptRegistry.h"
 #include "AssetDatabase.h"
 #include "MaterialAsset.h"
+#include <json/json.hpp>
 #include <filesystem>
+#include <fstream>
 #include <stb/stb_image_write.h>
 #include <cstdlib>
 #include <iostream>
@@ -21,9 +23,10 @@ namespace ogl {
 
 static constexpr bool FULLSCREEN = true;
 
-Application::Application()
+Application::Application(const std::string& projectPathArg)
 	: window(1600, 900, "OpenGLCore - PBR Editor", FULLSCREEN)
 {
+	projectPath = projectPathArg;
 	fbWidth = window.Width();
 	fbHeight = window.Height();
 
@@ -64,7 +67,37 @@ Application::Application()
 	glUniform1i(glGetUniformLocation(pbrShader->ID, "u_brdfLUT"), 2);
 
 	scene = std::make_unique<Scene>();
-	BuildScene();
+	// Open the project's scene (Hub handoff). If Assets/Scenes/Main.scene exists, load it; otherwise
+	// seed it per the project's template ("blank" -> empty, anything else -> the built-in demo) and
+	// save it so the project persists its own scene.
+	{
+		namespace fs = std::filesystem;
+		std::string mainScene = assetDb.IsOpen() ? (assetDb.AssetsDir() + "/Scenes/Main.scene") : std::string();
+		std::string serr;
+		bool loadedMain = false;
+		if (!mainScene.empty() && fs::exists(mainScene))
+			loadedMain = SceneIO::Load(*scene, mainScene, *assets, primitives, &serr);
+
+		if (loadedMain)
+			std::cout << "[Project] loaded scene Assets/Scenes/Main.scene (" << scene->Count() << " objects)" << std::endl;
+		else
+		{
+			// Determine the template (default to the demo so the built-in Project is populated).
+			std::string tmpl = "starter";
+			if (assetDb.IsOpen())
+			{
+				std::ifstream pin(assetDb.ProjectRoot() + "/ProjectSettings/project.json");
+				if (pin) { try { nlohmann::json j; pin >> j; tmpl = j.value("template", std::string("starter")); } catch (...) {} }
+			}
+			if (tmpl != "blank") BuildScene();  // populate the built-in demo scene
+			if (!mainScene.empty())
+			{
+				SceneIO::Save(*scene, mainScene, &serr);
+				assetDb.RegisterNewAsset("Scenes/Main.scene");
+			}
+			std::cout << "[Project] seeded scene from template '" << tmpl << "' (" << scene->Count() << " objects)" << std::endl;
+		}
+	}
 
 	editor.Init(window.Handle(), camera.get(), &primitives, assets.get(), &input, &scripts, physics.get(), &assetDb);
 	editor.Log(std::string("Physics: ") + (physics->Available() ? "NVIDIA PhysX ready" : "PhysX unavailable"));

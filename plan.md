@@ -76,6 +76,15 @@ Make what already exists persistent and composable. Highest return, low risk.
 - [ ] **Instanced rendering** for repeated meshes.
 
 ## Tier 5 — Content pipeline & polish
+- [x] **Asset database + GUID references** (`io/AssetDatabase`, `io/Guid.h`) — scans Assets/,
+      `.meta` sidecars with stable GUIDs, GUID<->path maps, Refresh/RegisterNewAsset, move/rename
+      reference preservation. See docs/ASSET_PIPELINE.md.
+- [x] **Material assets** (`render/MaterialAsset`) — persistent `.mat` (GUID, scalars, texture refs
+      by GUID, tiling/offset), Resolve()→PbrMaterial. Material Inspector + Project browser + Create/
+      Assign in the editor. See docs/MATERIAL_SYSTEM.md, docs/EDITOR.md.
+- [x] **Project system + Engine Hub** — standard project structure, ProjectSettings, Main.scene
+      seeding by template; standalone `EngineHub.exe` (create/open/recent + launches the editor via
+      `--project`). See docs/PROJECT_SYSTEM.md.
 - [ ] **Model PBR-map import** in `Model` (normal/metallic/roughness/AO, not just diffuse).
 - [ ] **Prefabs** — reusable GameObject templates instantiated into scenes.
 - [x] **Editor camera navigation** — scroll-zoom, Alt+LMB orbit around selection, middle-mouse
