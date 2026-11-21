@@ -9,6 +9,8 @@
 #include "ScriptSystem.h"
 #include "ScriptRegistry.h"
 #include "Physics.h"
+#include "AssetDatabase.h"
+#include "MaterialAsset.h"
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -24,6 +26,9 @@
 #include <algorithm>
 
 namespace ogl {
+
+Editor::Editor() = default;
+Editor::~Editor() = default; // MaterialAsset complete here -> unique_ptr can delete
 
 // ---------------------------------------------------------------------------------------
 // Helpers
@@ -65,7 +70,7 @@ namespace
 // Lifecycle
 // ---------------------------------------------------------------------------------------
 void Editor::Init(GLFWwindow* window, Camera* cam, const PrimitiveLibrary* prims, AssetManager* am,
-	Input* in, ScriptSystem* ss, PhysicsScene* ps)
+	Input* in, ScriptSystem* ss, PhysicsScene* ps, AssetDatabase* db)
 {
 	camera = cam;
 	primitives = prims;
@@ -73,6 +78,7 @@ void Editor::Init(GLFWwindow* window, Camera* cam, const PrimitiveLibrary* prims
 	input = in;
 	scripts = ss;
 	physics = ps;
+	assetDb = db;
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -155,11 +161,16 @@ void Editor::BuildUI(Scene& scene, RenderSettings& settings,
 	DrawInspector(scene, settings);
 	ImGui::End();
 
-	// Console (bottom, full width)
+	// Bottom panel (full width): Console + Project browser as tabs.
 	ImGui::SetNextWindowPos(ImVec2(0, top + centerH), ImGuiCond_Always);
 	ImGui::SetNextWindowSize(ImVec2(dispW, consoleH), ImGuiCond_Always);
-	ImGui::Begin("Console", nullptr, fixedFlags);
-	DrawConsole(settings);
+	ImGui::Begin("Bottom Panel", nullptr, fixedFlags);
+	if (ImGui::BeginTabBar("##bottomtabs"))
+	{
+		if (ImGui::BeginTabItem("Console")) { DrawConsole(settings); ImGui::EndTabItem(); }
+		if (ImGui::BeginTabItem("Project")) { DrawProjectBrowser(scene); ImGui::EndTabItem(); }
+		ImGui::EndTabBar();
+	}
 	ImGui::End();
 
 	if (showHistoryPanel) DrawHistoryPanel();
@@ -409,6 +420,22 @@ void Editor::TrackEdit(Scene& /*scene*/, GameObject* go, const char* label)
 
 void Editor::DrawInspector(Scene& scene, RenderSettings& settings)
 {
+	// A material asset open in the Material Inspector takes priority (Unity shows the asset in the
+	// Inspector when it is selected in Project). A button assigns it to the selected scene object.
+	if (activeMaterial)
+	{
+		DrawMaterialInspector();
+		ImGui::Separator();
+		GameObject* selObj = scene.FindById(scene.SelectedId());
+		if (selObj && selObj->meshRenderer)
+		{
+			if (ImGui::Button("Assign to Selected Object")) AssignSelectedMaterialTo(scene, scene.SelectedId());
+			ImGui::SameLine();
+		}
+		ImGui::TextDisabled("(material asset open)");
+		return;
+	}
+
 	GameObject* go = scene.SelectedObject();
 	if (!go)
 	{
@@ -719,6 +746,194 @@ void Editor::DrawConsole(const RenderSettings& settings)
 	if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
 		ImGui::SetScrollHereY(1.0f);
 	ImGui::EndChild();
+}
+
+// ---------------------------------------------------------------------------------------
+// Project browser (Unity-style Assets panel) + material asset workflow
+// ---------------------------------------------------------------------------------------
+namespace
+{
+	std::string ParentFolder(const std::string& rel)
+	{
+		size_t s = rel.find_last_of('/');
+		return (s == std::string::npos) ? std::string() : rel.substr(0, s);
+	}
+	std::string BaseName(const std::string& rel)
+	{
+		size_t s = rel.find_last_of('/');
+		return (s == std::string::npos) ? rel : rel.substr(s + 1);
+	}
+}
+
+void Editor::DrawProjectBrowser(Scene& scene)
+{
+	if (!assetDb || !assetDb->IsOpen()) { ImGui::TextDisabled("No project open."); return; }
+
+	// Toolbar: breadcrumb + up + refresh + create.
+	ImGui::Text("Assets/%s", browserFolder.c_str());
+	ImGui::SameLine();
+	if (!browserFolder.empty() && ImGui::SmallButton("Up")) browserFolder = ParentFolder(browserFolder);
+	ImGui::SameLine();
+	if (ImGui::SmallButton("Refresh")) assetDb->Refresh();
+	ImGui::SameLine();
+	if (ImGui::SmallButton("Create Material")) CreateMaterialAsset();
+	ImGui::Separator();
+
+	// Collect sub-folders (from asset paths) and files in the current folder.
+	std::vector<std::string> folders;
+	for (const AssetRecord& r : assetDb->All())
+	{
+		std::string dir = ParentFolder(r.path);
+		// direct child folder of browserFolder?
+		if (dir.rfind(browserFolder, 0) == 0)
+		{
+			std::string rest = browserFolder.empty() ? dir : (dir.size() > browserFolder.size() ? dir.substr(browserFolder.size() + 1) : "");
+			if (!rest.empty())
+			{
+				std::string first = rest.substr(0, rest.find('/'));
+				std::string full = browserFolder.empty() ? first : (browserFolder + "/" + first);
+				if (std::find(folders.begin(), folders.end(), full) == folders.end()) folders.push_back(full);
+			}
+		}
+	}
+	std::sort(folders.begin(), folders.end());
+
+	ImGui::BeginChild("assetlist");
+	for (const std::string& f : folders)
+	{
+		if (ImGui::Selectable(("[dir] " + BaseName(f)).c_str(), false, ImGuiSelectableFlags_AllowDoubleClick))
+			if (ImGui::IsMouseDoubleClicked(0)) browserFolder = f;
+	}
+	for (const AssetRecord* r : assetDb->InFolder(browserFolder))
+	{
+		bool sel = (selectedAssetPath == r->path);
+		std::string label = std::string(AssetTypeName(r->type)) + ": " + BaseName(r->path);
+		if (ImGui::Selectable(label.c_str(), sel, ImGuiSelectableFlags_AllowDoubleClick))
+		{
+			selectedAssetPath = r->path;
+			if (r->type == AssetType::Material && ImGui::IsMouseDoubleClicked(0))
+				LoadSelectedMaterial(r->path);
+		}
+		// Right-click: assign a material to the selected object.
+		if (r->type == AssetType::Material && ImGui::BeginPopupContextItem())
+		{
+			if (ImGui::MenuItem("Open in Material Inspector")) LoadSelectedMaterial(r->path);
+			GameObject* selObj = scene.FindById(scene.SelectedId());
+			if (ImGui::MenuItem("Assign to Selected Object", nullptr, false, selObj && selObj->meshRenderer.has_value()))
+			{ LoadSelectedMaterial(r->path); AssignSelectedMaterialTo(scene, scene.SelectedId()); }
+			ImGui::EndPopup();
+		}
+	}
+	ImGui::EndChild();
+}
+
+void Editor::CreateMaterialAsset()
+{
+	if (!assetDb || !assetDb->IsOpen()) return;
+	// Pick a unique name in the current folder (default to Materials/ at the root).
+	std::string folder = browserFolder.empty() ? "Materials" : browserFolder;
+	std::string rel;
+	for (int i = 0; i < 1000; ++i)
+	{
+		std::string name = "New Material" + (i == 0 ? std::string() : (" " + std::to_string(i))) + ".mat";
+		rel = folder + "/" + name;
+		if (!assetDb->FindByPath(rel)) break;
+	}
+	MaterialAsset m; m.guid = Guid::Generate(); m.name = BaseName(rel); m.ResetToDefaults();
+	if (!m.Save(assetDb->AbsolutePath(rel))) { Log("Failed to create material: " + rel); return; }
+	assetDb->RegisterNewAsset(rel);
+	Log("Created material: Assets/" + rel);
+	LoadSelectedMaterial(rel);
+	selectedAssetPath = rel;
+	browserFolder = folder;
+}
+
+void Editor::LoadSelectedMaterial(const std::string& relPath)
+{
+	if (!assetDb) return;
+	auto m = std::make_unique<MaterialAsset>();
+	if (!MaterialAsset::Load(assetDb->AbsolutePath(relPath), *m)) { Log("Failed to load material: " + relPath); return; }
+	activeMaterial = std::move(m);
+	activeMaterialPath = relPath;
+	activeMaterialDirty = false;
+}
+
+void Editor::SaveSelectedMaterial()
+{
+	if (!assetDb || !activeMaterial || activeMaterialPath.empty()) return;
+	if (activeMaterial->Save(assetDb->AbsolutePath(activeMaterialPath)))
+	{ activeMaterialDirty = false; Log("Saved material: Assets/" + activeMaterialPath); }
+}
+
+void Editor::AssignSelectedMaterialTo(Scene& scene, std::uint32_t objectId)
+{
+	if (!activeMaterial || !assets || !assetDb) return;
+	GameObject* go = scene.FindById(objectId);
+	if (!go || !go->meshRenderer) return;
+	GameObject before = *go;
+	go->meshRenderer->material = activeMaterial->Resolve(*assetDb, *assets);
+	go->meshRenderer->materialName = activeMaterial->name;
+	history.Push(std::make_unique<ModifyCommand>(go->id, before, *go, "Assign Material"));
+	Log("Assigned '" + activeMaterial->name + "' to " + go->name);
+}
+
+void Editor::DrawMaterialInspector()
+{
+	if (!activeMaterial) return;
+	MaterialAsset& m = *activeMaterial;
+	ImGui::SeparatorText("Material Asset");
+	ImGui::TextDisabled("Assets/%s", activeMaterialPath.c_str());
+	ImGui::TextDisabled("GUID: %s", m.guid.ToString().c_str());
+
+	char nameBuf[128];
+	std::snprintf(nameBuf, sizeof(nameBuf), "%s", m.name.c_str());
+	if (ImGui::InputText("Name", nameBuf, sizeof(nameBuf))) { m.name = nameBuf; activeMaterialDirty = true; }
+
+	if (ImGui::ColorEdit3("Albedo", &m.albedo.x)) activeMaterialDirty = true;
+	if (ImGui::SliderFloat("Metallic", &m.metallic, 0.0f, 1.0f)) activeMaterialDirty = true;
+	if (ImGui::SliderFloat("Roughness", &m.roughness, 0.0f, 1.0f)) activeMaterialDirty = true;
+	if (ImGui::SliderFloat("AO", &m.ao, 0.0f, 1.0f)) activeMaterialDirty = true;
+
+	ImGui::SeparatorText("Textures (GUID refs)");
+	auto texRow = [&](const char* label, Guid& g)
+	{
+		std::string path = g.IsValid() && assetDb ? assetDb->GuidToPath(g) : std::string();
+		ImGui::Text("%s", label); ImGui::SameLine(110.0f);
+		ImGui::TextDisabled("%s", path.empty() ? "(none)" : path.c_str());
+		ImGui::SameLine();
+		ImGui::PushID(label);
+		// Assign the currently-selected Texture asset from the browser.
+		if (ImGui::SmallButton("Set"))
+		{
+			if (assetDb)
+			{
+				const AssetRecord* r = assetDb->FindByPath(selectedAssetPath);
+				if (r && r->type == AssetType::Texture) { g = r->guid; activeMaterialDirty = true; }
+				else Log("Select a Texture asset in Project first, then press Set.");
+			}
+		}
+		ImGui::SameLine();
+		if (ImGui::SmallButton("Clear")) { g = Guid{}; activeMaterialDirty = true; }
+		ImGui::PopID();
+	};
+	texRow("Albedo", m.albedoTex);
+	texRow("Normal", m.normalTex);
+	texRow("Metallic", m.metallicTex);
+	texRow("Roughness", m.roughnessTex);
+	texRow("AO", m.aoTex);
+
+	ImGui::SeparatorText("UV / Rendering");
+	if (ImGui::DragFloat2("Tiling", &m.tiling.x, 0.01f, 0.0f, 100.0f)) activeMaterialDirty = true;
+	if (ImGui::DragFloat2("Offset", &m.offset.x, 0.01f)) activeMaterialDirty = true;
+	if (ImGui::Checkbox("Double Sided", &m.doubleSided)) activeMaterialDirty = true;
+	ImGui::TextDisabled("(tiling/offset/doubleSided stored; shader application is a TODO)");
+
+	ImGui::Separator();
+	if (ImGui::Button(activeMaterialDirty ? "Save*" : "Save")) SaveSelectedMaterial();
+	ImGui::SameLine();
+	if (ImGui::Button("Reset")) { std::string n = m.name; m.ResetToDefaults(); m.name = n; activeMaterialDirty = true; }
+	ImGui::SameLine();
+	if (ImGui::Button("Close")) { activeMaterial.reset(); activeMaterialPath.clear(); }
 }
 
 void Editor::DrawHistoryPanel()

@@ -43,6 +43,16 @@ Application::Application()
 	assets = std::make_unique<AssetManager>();
 	lines = std::make_unique<LineRenderer>();
 	physics = std::make_unique<PhysicsScene>();
+
+	// Open (or create) the project asset database. The Hub passes --project; otherwise default to
+	// a local "Project" folder next to the working directory so the editor always has one.
+	if (projectPath.empty()) projectPath = "Project";
+	if (assetDb.Open(projectPath))
+		std::cout << "[Project] opened '" << assetDb.ProjectRoot() << "' ("
+			<< assetDb.All().size() << " assets)" << std::endl;
+	else
+		std::cerr << "[Project] failed to open '" << projectPath << "'" << std::endl;
+
 	input.Init(window.Handle());
 	scripts.SetEventBus(&events);
 	ScriptRegistry::RegisterBuiltins();
@@ -56,7 +66,7 @@ Application::Application()
 	scene = std::make_unique<Scene>();
 	BuildScene();
 
-	editor.Init(window.Handle(), camera.get(), &primitives, assets.get(), &input, &scripts, physics.get());
+	editor.Init(window.Handle(), camera.get(), &primitives, assets.get(), &input, &scripts, physics.get(), &assetDb);
 	editor.Log(std::string("Physics: ") + (physics->Available() ? "NVIDIA PhysX ready" : "PhysX unavailable"));
 	editor.Log(std::string("IBL source: ") + (ibl->UsingHDRI() ? "HDRI (ballroom_4k.exr)" : "procedural sky"));
 	editor.Log("Scene loaded: " + std::to_string(scene->Count()) + " objects.");

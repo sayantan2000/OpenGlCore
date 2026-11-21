@@ -17,6 +17,7 @@
 #include "PrimitiveLibrary.h"
 #include "LineRenderer.h"
 #include "AssetManager.h"
+#include "AssetDatabase.h"
 #include "Input.h"
 #include "ScriptSystem.h"
 #include "Physics.h"
@@ -37,6 +38,9 @@ public:
 	Application& operator=(const Application&) = delete;
 
 	void Run();
+
+	// Project root to open (from the Hub via --project). Empty = use/create a local "Project".
+	void SetProjectPath(const std::string& path) { projectPath = path; }
 
 private:
 	void BuildScene();
@@ -67,6 +71,8 @@ private:
 
 	// Shared texture/model assets loaded by path (owned here; referenced by materials/meshes).
 	std::unique_ptr<AssetManager> assets;
+	AssetDatabase assetDb;         // GUID-based project asset index (Assets/ folder)
+	std::string projectPath;       // project root (from --project; default "./Project")
 
 	// Shared primitive meshes (cube/sphere/plane/...) referenced by editor-created objects.
 	std::vector<std::unique_ptr<Mesh>> primitiveMeshes;

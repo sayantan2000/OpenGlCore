@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <cstdint>
+#include <memory>
 #include <glm/glm.hpp>
 #include "EditorCommand.h"
 #include "PrimitiveLibrary.h"
@@ -17,6 +18,8 @@ class AssetManager;
 class Input;
 class ScriptSystem;
 class PhysicsScene;
+class AssetDatabase;
+struct MaterialAsset;
 
 // Per-frame render settings the Inspector/menus can tweak.
 struct RenderSettings
@@ -42,8 +45,12 @@ public:
 	enum class GizmoOp { Translate, Rotate, Scale };
 	enum class GizmoSpace { World, Local };
 
+	Editor();
+	~Editor(); // out-of-line: unique_ptr<MaterialAsset> needs the complete type
+
 	void Init(GLFWwindow* window, Camera* camera, const PrimitiveLibrary* primitives,
-		AssetManager* assets, Input* input, ScriptSystem* scripts, PhysicsScene* physics);
+		AssetManager* assets, Input* input, ScriptSystem* scripts, PhysicsScene* physics,
+		AssetDatabase* assetDb);
 	void Shutdown();
 
 	void BeginFrame();                       // ImGui + ImGuizmo new frame
@@ -73,6 +80,12 @@ private:
 	void DrawInspector(Scene& scene, RenderSettings& settings);
 	void DrawConsole(const RenderSettings& settings);
 	void DrawHistoryPanel();
+	void DrawProjectBrowser(Scene& scene);        // Unity-style Assets panel
+	void DrawMaterialInspector();                 // editing the selected .mat asset
+	void CreateMaterialAsset();                   // Project: Create > Material
+	void LoadSelectedMaterial(const std::string& relPath);
+	void SaveSelectedMaterial();
+	void AssignSelectedMaterialTo(Scene& scene, std::uint32_t objectId);
 
 	// Viewport interaction
 	void HandleCameraNavigation(Scene& scene); // scroll-zoom, Alt+LMB orbit, MMB pan
@@ -111,7 +124,15 @@ private:
 	Input* input = nullptr;
 	ScriptSystem* scripts = nullptr;
 	PhysicsScene* physics = nullptr;
+	AssetDatabase* assetDb = nullptr;
 	CommandHistory history;
+
+	// Project browser / material editor state.
+	std::string browserFolder;                 // current folder (relative to Assets/, "" = root)
+	std::string selectedAssetPath;             // selected asset (relative to Assets/)
+	std::unique_ptr<MaterialAsset> activeMaterial; // the .mat currently open in the Material Inspector
+	std::string activeMaterialPath;            // its path relative to Assets/
+	bool activeMaterialDirty = false;
 	std::string scenePath = "scene.json"; // default save/load path (cwd)
 
 	bool isPlaying = false;
