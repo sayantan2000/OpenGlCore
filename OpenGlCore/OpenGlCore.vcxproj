@@ -168,6 +168,7 @@
     <ClCompile Include="render\Camera.cpp" />
     <ClCompile Include="render\IBL.cpp" />
     <ClCompile Include="render\PbrMaterial.cpp" />
+    <ClCompile Include="render\MaterialAsset.cpp" />
     <ClCompile Include="render\Light.cpp" />
     <ClCompile Include="render\Model.cpp" />
     <ClCompile Include="render\Text.cpp" />
@@ -181,6 +182,7 @@
     <ClCompile Include="physics\PhysicsScene.cpp" />
     <ClCompile Include="physics\PhysicsDebug.cpp" />
     <ClCompile Include="io\AssetManager.cpp" />
+    <ClCompile Include="io\AssetDatabase.cpp" />
     <ClCompile Include="io\SceneIO.cpp" />
     <ClCompile Include="thirdparty\glad.c" />
     <ClCompile Include="thirdparty\stb.cpp" />
@@ -222,6 +224,7 @@
     <ClInclude Include="render\Camera.h" />
     <ClInclude Include="render\IBL.h" />
     <ClInclude Include="render\PbrMaterial.h" />
+    <ClInclude Include="render\MaterialAsset.h" />
     <ClInclude Include="render\Light.h" />
     <ClInclude Include="render\Model.h" />
     <ClInclude Include="render\Text.h" />
@@ -241,6 +244,8 @@
     <ClInclude Include="scripting\ScriptSystem.h" />
     <ClInclude Include="physics\Physics.h" />
     <ClInclude Include="io\AssetManager.h" />
+    <ClInclude Include="io\AssetDatabase.h" />
+    <ClInclude Include="io\Guid.h" />
     <ClInclude Include="io\SceneIO.h" />
     <ClInclude Include="Libraries\source\ImGuizmo\ImGuizmo.h" />
   </ItemGroup>

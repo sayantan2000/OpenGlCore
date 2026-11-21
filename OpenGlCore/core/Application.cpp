@@ -4,6 +4,9 @@
 #include "EngineTime.h"
 #include "SceneIO.h"
 #include "ScriptRegistry.h"
+#include "AssetDatabase.h"
+#include "MaterialAsset.h"
+#include <filesystem>
 #include <stb/stb_image_write.h>
 #include <cstdlib>
 #include <iostream>
@@ -760,9 +763,53 @@ void Application::Run()
 				<< " y1=" << y1 << std::endl;
 		}
 
+		// Exercise the AssetDatabase + MaterialAsset: create a throwaway project, write a material
+		// asset, verify GUID stability across save/reload, and verify the GUID survives a rename.
+		bool assetDbOk = false;
+		{
+			namespace fs = std::filesystem;
+			std::error_code ec;
+			std::string proj = "selftest_project";
+			fs::remove_all(proj, ec); // clean slate
+
+			AssetDatabase db;
+			bool opened = db.Open(proj);
+			bool skeleton = fs::exists(fs::path(proj) / "Assets" / "Materials")
+				&& fs::exists(fs::path(proj) / "ProjectSettings");
+
+			MaterialAsset mat; mat.guid = Guid::Generate(); mat.name = "TestMat";
+			mat.albedo = glm::vec3(0.1f, 0.2f, 0.3f); mat.roughness = 0.33f; mat.metallic = 0.7f;
+			std::string relMat = "Materials/Test.mat";
+			std::string absMat = db.AbsolutePath(relMat);
+			bool savedMat = mat.Save(absMat);
+			Guid gReg = db.RegisterNewAsset(relMat);
+
+			MaterialAsset mat2;
+			bool loadedMat = MaterialAsset::Load(absMat, mat2);
+			bool guidStable = loadedMat && (mat2.guid == mat.guid)
+				&& std::abs(mat2.roughness - 0.33f) < 1e-5f && std::abs(mat2.metallic - 0.7f) < 1e-5f;
+
+			// Rescan picks it up via its .meta; the path resolves to a GUID.
+			db.Refresh();
+			Guid gBefore = db.PathToGuid(relMat);
+
+			// Rename the asset + its .meta, rescan: the GUID must be unchanged (reference survives).
+			std::string relNew = "Materials/Renamed.mat";
+			fs::rename(absMat, db.AbsolutePath(relNew), ec);
+			fs::rename(absMat + ".meta", db.AbsolutePath(relNew) + ".meta", ec);
+			db.Refresh();
+			Guid gAfter = db.PathToGuid(relNew);
+			bool renameStable = gBefore.IsValid() && (gAfter == gBefore) && !db.PathToGuid(relMat).IsValid();
+
+			fs::remove_all(proj, ec);
+			assetDbOk = opened && skeleton && savedMat && guidStable && gReg.IsValid() && renameStable;
+			std::cout << "[SELFTEST] AssetDB opened=" << opened << " guidStable=" << guidStable
+				<< " renameStable=" << renameStable << std::endl;
+		}
+
 		std::cout << "[SELFTEST] "
 			<< ((saved && loaded && countOk && scriptsOk && physicsOk && meshColliderOk
-				&& eventBusOk && characterOk) ? "PASS" : "FAIL") << std::endl;
+				&& eventBusOk && characterOk && assetDbOk) ? "PASS" : "FAIL") << std::endl;
 		return;
 	}
 
